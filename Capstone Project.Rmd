@@ -1,0 +1,24 @@
+---
+title: "Capstone Project"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+According to the FTSA, Fantasy Football is a $70 Billion dollar industry that is participated in by 41 Million Americans and growing each year. At any point in time, there is about $15 Billion dollars in play on bets throughout the season. With roughly 323 million people in the United States, this means that approximately 1 in every 10 people plays fantasy football every season. Using data science to track and narrow down the most successful players and teams can give fantasy football participants the edge they need to win their leagues. I want to provide fantasy football participants with the best possible picks for each position each week. 
+
+The data I am going to use for this is the past two to three year’s worth of historical NFL Data. Teams change so much and players get traded so any data going further back would have aged out of usefulness. For this project I will use the freely available data from the analysts at: CBS Average, Yahoo Sports, ESPN, NFL and Fox Sports. I believe that it will be better to focus on a few widely accepted sources of data than trying to pull every piece of data available. 
+
+I would like to achieve this by aggregating data on player rankings and predictions from the sources I mentioned above and displaying the player’s predicted ranking – averaged form the sources I’ll be pulling the data from
+
+The result of this project will be the code picking which players will be the best possible picks in the upcoming week for a fantasy football team and a graph that will display who the best player is for the position in question based on the averaged rankings
+
+
+
+
+
+
