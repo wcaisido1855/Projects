@@ -1,0 +1,294 @@
+In this exercise, you'll work with one of the most popular starter data sets in data science, the Titanic data set. 
+This is a data set that records various attributes of passengers on the Titanic, including who survived and who didn’t.
+
+Exercise:
+Using R, you’ll be handling missing values in this data set, and creating a new data set. Specifically, these are the tasks you need to do:
+
+0: Load the data in RStudio
+Save the data set as a CSV file called titanic_original.csv and load it in RStudio into a data frame.
+
+
+> library(readr)
+> titanic_original <- read_csv("~/Desktop/titanic_original.csv")
+> View(titanic_original)
+
+
+1: Port of embarkation
+The embarked column has some missing values, which are known to correspond to passengers who actually embarked at Southampton. 
+Find the missing values and replace them with S. (Caution: Sometimes a missing value might be read into R as a blank or empty string.)
+
+
+> df<-read.csv("~/Desktop/titanic_original.csv",na.strings=c("","na"))
+> df[is.na(df$embarked),]
+> df1<-df
+> df1$embarked <-lapply(df1$embarked, as.character)
+> df1$embarked[which(is.na(df1$embarked))] <-"s"
+> df2[is.na(df2$embarked),]
+
+
+2: Age
+You’ll notice that a lot of the values in the Age column are missing. While there are many ways to fill these missing values, using 
+the mean or median of the rest of the values is quite common in such cases. Calculate the mean of the Age column and use that value 
+to populate the missing values. Think about other ways you could have populated the missing values in the age column. Why would you 
+pick any of those over the mean (or not)?
+
+
+> df2[is.na(df2$age),]
+> df2$age[which(is.na(df2$age))] <- mean(df2$age,na.rm = TRUE)
+> df2[is.na(df2$age),]
+> df3 <-df2
+
+
+3: Lifeboat
+You’re interested in looking at the distribution of passengers in different lifeboats, but as we know, many passengers did not make 
+it to a boat :-( This means that there are a lot of missing values in the boat column. Fill these empty slots with a dummy value 
+e.g. the string 'None' or 'NA'
+
+
+# Did this with the very first line of 1: Port of embarkation:
+> df<-read.csv("~/Desktop/titanic_original.csv",na.strings=c("","na"))
+
+
+4: Cabin
+You notice that many passengers don’t have a cabin number associated with them.
+
+Does it make sense to fill missing cabin numbers with a value?
+- Yes it does makes sense to fill those cabin numbers with a value as they are still a part of the data set. 
+
+What does a missing value here mean?
+- Here, a missing value doesn't necessarily mean that an individual perished with the ship, it simply means that they are 
+unaccounted for. According to Encyclopedia-titanica.org:
+
+"The allocation of cabins on the Titanic is a source of continuing interest and endless speculation. Apart from the recollections 
+of survivors and a few tickets and boarding cards, the only authoritative source of cabin data is the incomplete first class passenger 
+list recovered with the body of steward Herbert Cave. The list below includes this data and includes the likely occupants of some 
+other cabins determined by other means. The difficulty in determining, with any degree of accuracy, the occupancy of cabins on the 
+Titanic indicates the need for further research in this area."
+
+You have a hunch that the fact that the cabin number is missing might be a useful indicator of survival. Create a new 
+column has_cabin_number which has 1 if there is a cabin number, and 0 otherwise.
+
+
+df3$cabin <-lapply(df3$cabin, as.character)
+df3$has_cabin_number <- ifelse(df3$cabin == "NA", 0, 1)
+df4<-df3
+df4$has_cabin_number[which(is.na(df4$has_cabin_number))] <- 0
+str(df4)
+
+
+'data.frame':	1310 obs. of  15 variables:
+ $ pclass          : int  1 1 1 1 1 1 1 1 1 1 ...
+ $ survived        : int  1 1 0 0 0 1 1 0 1 0 ...
+ $ name            : Factor w/ 1307 levels "Abbing, Mr. Anthony",..: 22 24 25 26 27 31 46 47 51 55 ...
+ $ sex             : Factor w/ 2 levels "female","male": 1 2 1 2 1 2 1 2 1 2 ...
+ $ age             : num  29 0.917 2 30 25 ...
+ $ sibsp           : int  0 1 1 1 1 0 1 0 2 0 ...
+ $ parch           : int  0 2 2 2 2 0 0 0 0 0 ...
+ $ ticket          : Factor w/ 929 levels "110152","110413",..: 188 50 50 50 50 125 93 16 77 826 ...
+ $ fare            : num  211 152 152 152 152 ...
+ $ cabin           :List of 1310
+  ..$ : chr "B5"
+  ..$ : chr "C22 C26"
+  ..$ : chr "C22 C26"
+  ..$ : chr "C22 C26"
+  ..$ : chr "C22 C26"
+  ..$ : chr "E12"
+  ..$ : chr "D7"
+  ..$ : chr "A36"
+  ..$ : chr "C101"
+  ..$ : chr NA
+  ..$ : chr "C62 C64"
+  ..$ : chr "C62 C64"
+  ..$ : chr "B35"
+  ..$ : chr NA
+  ..$ : chr "A23"
+  ..$ : chr NA
+  ..$ : chr "B58 B60"
+  ..$ : chr "B58 B60"
+  ..$ : chr "D15"
+  ..$ : chr "C6"
+  ..$ : chr "D35"
+  ..$ : chr "D35"
+  ..$ : chr "C148"
+  ..$ : chr NA
+  ..$ : chr "C97"
+  ..$ : chr NA
+  ..$ : chr "B49"
+  ..$ : chr "B49"
+  ..$ : chr "C99"
+  ..$ : chr "C52"
+  ..$ : chr "T"
+  ..$ : chr "A31"
+  ..$ : chr "C7"
+  ..$ : chr "C103"
+  ..$ : chr "D22"
+  ..$ : chr NA
+  ..$ : chr "E33"
+  ..$ : chr NA
+  ..$ : chr "A21"
+  ..$ : chr "B10"
+  ..$ : chr NA
+  ..$ : chr "B4"
+  ..$ : chr "C101"
+  ..$ : chr "D15"
+  ..$ : chr "E40"
+  ..$ : chr "B38"
+  ..$ : chr NA
+  ..$ : chr "E24"
+  ..$ : chr NA
+  ..$ : chr "B51 B53 B55"
+  ..$ : chr "B51 B53 B55"
+  ..$ : chr "B51 B53 B55"
+  ..$ : chr NA
+  ..$ : chr NA
+  ..$ : chr "B96 B98"
+  ..$ : chr "B96 B98"
+  ..$ : chr "B96 B98"
+  ..$ : chr "B96 B98"
+  ..$ : chr NA
+  ..$ : chr NA
+  ..$ : chr "C46"
+  ..$ : chr "C46"
+  ..$ : chr "E31"
+  ..$ : chr "E31"
+  ..$ : chr "E8"
+  ..$ : chr "E8"
+  ..$ : chr "B61"
+  ..$ : chr "B77"
+  ..$ : chr "A9"
+  ..$ : chr "E33"
+  ..$ : chr NA
+  ..$ : chr "C89"
+  ..$ : chr "C89"
+  ..$ : chr NA
+  ..$ : chr "A14"
+  ..$ : chr "E58"
+  ..$ : chr "E49"
+  ..$ : chr "E52"
+  ..$ : chr "E45"
+  ..$ : chr "C101"
+  ..$ : chr NA
+  ..$ : chr "B22"
+  ..$ : chr "B22"
+  ..$ : chr "B26"
+  ..$ : chr "C85"
+  ..$ : chr "C85"
+  ..$ : chr "E17"
+  ..$ : chr NA
+  ..$ : chr NA
+  ..$ : chr "B71"
+  ..$ : chr "B71"
+  ..$ : chr "B20"
+  ..$ : chr "B20"
+  ..$ : chr "A34"
+  ..$ : chr "A34"
+  ..$ : chr "A34"
+  ..$ : chr "C86"
+  ..$ : chr "B58 B60"
+  ..$ : chr "C86"
+  .. [list output truncated]
+ $ embarked        :List of 1310
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "S"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  ..$ : chr "C"
+  .. [list output truncated]
+ $ boat            : Factor w/ 27 levels "1","10","11",..: 12 3 NA NA NA 13 2 NA 27 NA ...
+ $ body            : int  NA NA NA 135 NA NA NA NA NA 22 ...
+ $ home.dest       : Factor w/ 369 levels "?Havana, Cuba",..: 309 231 231 231 231 237 162 24 22 229 ...
+ $ has_cabin_number: num  1 1 1 1 1 1 1 1 1 0 ...
