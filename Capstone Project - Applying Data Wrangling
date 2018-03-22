@@ -1,0 +1,274 @@
+Setting my working directory:
+```
+> setwd("~/R Studio Directory/Lending Club Loan Datsets 2007 - 2017/Loan Stats CSV files")
+```
+Just double checking that the directory is correct: 
+```
+> getwd()
+[1] "/Users/Broseidon/R Studio Directory/Lending Club Loan Datsets 2007 - 2017/Loan Stats CSV files"
+```
+Looks like we're good!
+
+Time to Load The Libraries I’ll need:
+```
+library(tidyverse)
+library(caret)
+library(rpart)
+library(stringr)
+library(lubridate)
+library(rms)
+library(kernlab)
+library(reshape)
+library(corrgram)
+library(gridExtra)
+library(ggplot2)
+library(maps)
+```
+
+Load CSV Files into R as a variable:
+
+There are 11 of them in total. 
+Before moving, on, we also have to take the file labeled:
+"LoanStats_2012-2013.csv"  and filter all of the Loans from 2012 into one File and from 2013 onto another CSV (I tried doing this project without splitting the files and it was a nightmare). So now we have 12 files total:
+
+LoanStats_2012.csv
+LoanStats_2013.csv
+LoanStats_2014.csv
+LoanStats_2015.csv
+LoanStats_2016Q1.csv
+LoanStats_2016Q2.csv
+LoanStats_2016Q3.csv
+LoanStats_2016Q4.csv
+LoanStats_2017Q1.csv
+LoanStats_2017Q2.csv
+LoanStats_2017Q3.csv
+LoanStats_2017Q4.csv
+
+
+```
+> LDF1 <- read_csv("LoanStats_2012.csv")
+```
+Returns Warning: 
+```
+Warning: 381 parsing failures. 
+row # A tibble: 5 x 5 col      row             col               expected  actual expected    <int>           <chr>                  <chr>   <chr> actual 1  48007 funded_amnt_inv no trailing characters .191259 file 2  48066 funded_amnt_inv no trailing characters .222838 row 3 140131 funded_amnt_inv no trailing characters .183293 col 4 140413 funded_amnt_inv no trailing characters .292467 expected 5 142384 funded_amnt_inv no trailing characters .420323 actual # ... with 1 more variables: file <chr>
+```
+It turns out that the warning relates to the "funded_ amount_inv"" Column in the Excel file provided by Lending Club. Now, since this is just a warning, we could ignore it, but I'd rather not encounter any errors later, so we'll do a little work on the actual files themselves before continuing in R:
+
+Process to fix parsing:
+
+1) clicking on the Column D – "funded_amount"  
+2) Change the Data Type from General to Number  
+3) Click Remove Decimal 
+4) click Remove Decimal again. 
+
+This standardizes the numbers to round integers and allows us to load the file into the Data Frame. I had to repeat this process for each file and multiple variables that had parsing errors including:
+
+"funded_ amount_inv" - Column E
+“total_rec_late_fee” - Column AQ
+“recoveries” - Column AR
+“collection_recovery_fee" -Column AS
+“annual_inc_joint” - Column BB 
+
+```
+> LDF1 <- read_csv("LoanStats_2012.csv")
+```
+```
+> LDF2 <- read_csv("LoanStats_2013.csv")
+```
+```
+> LDF3 <- read_csv("LoanStats_2014.csv")
+```
+```
+> LDF4 <- read_csv("LoanStats_2015.csv")
+```
+
+The files for 2016 & 2017 are split up into quarters instead of one Excel file for the years, so I'm going to load them in, bind them together into one data frame and save that as a CSV, so I can just load that CSV File:
+
+```
+LDF2016Q1 <- read_csv("LoanStats_2016Q1.csv")
+LDF2016Q2 <- read_csv("LoanStats_2016Q2.csv")
+LDF2016Q3 <- read_csv("LoanStats_2016Q3.csv")
+LDF2016Q4 <- read_csv("LoanStats_2016Q4.csv")
+LDF5 <-  rbind(LoanDF2016Q1, LoanDF2016Q2, LoanDF2016Q3, LoanDF2016Q4)
+write.csv(LCLoanDF5, file = "LoanStats_2016.csv")
+
+When we load it back in: 
+LDF5 <- read_csv("LoanStats_2016.csv")
+```
+We also get this warning:
+Warning messages:
+1: Missing column names filled in: 'X1' [1] 
+2: In rbind(names(probs), probs_f) :
+  number of columns of result is not a multiple of vector length (arg 1)
+because when saving a CSV file form R and then loading it back in, R like to add a column to the left with numbers. I don't get this with the other files because I didn't have to save them from R and then Reload them. I would just go into Excel and delete the column so I don't have to Null the 'X1' column every time I want to load the data, but the files are too big and cause my computer to freeze when I attempt to open them.
+
+So, we'll try this:
+LDF5[,"X1"] <- NULL
+
+Success! Life is good. 
+I'm going to have to do the same thing for 2017:
+
+```
+LDF2017Q1 <- read_csv("LoanStats_2017Q1.csv")
+LDF2017Q2 <- read_csv("LoanStats_2017Q2.csv")
+LDF2017Q3 <- read_csv("LoanStats_2017Q3.csv")
+LDF2017Q4 <- read_csv("LoanStats_2017Q4.csv")
+
+Now to Unite 2017's data into one Frame:
+LDF6 <-  rbind(LDF2017Q1, LDF2017Q2, LDF2017Q3, LDF2017Q4)
+write.csv(LDF6, file = "LoanStats_2017.csv")
+LDF6 <- read_csv("LoanStats_2017.csv")
+LDF6[,"X1"] <- NULL
+```
+
+right here, I'm going to delete the original data frames from Q1,Q2,Q3 & Q4 for 2016 & 2017 since I now have combined each of those year's data into their own data frames and we won't be needing the info for each quarter again.
+
+Awesome. I will most likely need to load these in again if I exit my session or turn my computer off, so to save time I'm going to condense everything here:
+
+LDF1 <- read_csv("LoanStats_2012.csv")
+LDF2 <- read_csv("LoanStats_2013.csv")
+
+LDF3 <- read_csv("LoanStats_2014.csv")
+
+LDF4 <- read_csv("LoanStats_2015.csv")
+
+LDF5 <- read_csv("LoanStats_2016.csv")
+LDF5[,"X1"] <- NULL
+LDF6 <- read_csv("LoanStats_2017.csv")
+LDF6[,"X1"] <- NULL
+
+I'm going to get rid of "issue_d" right now to make my life a LOT easier:
+
+LDF1[,"issue_d"] <- NULL
+LDF2[,"issue_d"] <- NULL
+LDF3[,"issue_d"] <- NULL
+LDF4[,"issue_d"] <- NULL
+LDF5[,"issue_d"] <- NULL
+LDF6[,"issue_d"] <- NULL
+
+Now I'm going to hard code the year into each data frame so that I can combine them together and still analyze them by year
+
+LDF1$Year <- 2012
+LDF2$Year <- 2013
+LDF3$Year <- 2014
+LDF4$Year <- 2015
+LDF5$Year <- 2016
+LDF6$Year <- 2017
+
+##Now to make them into on big data frame:
+
+BIGDF <- rbind(LDF1, LDF2, LDF3, LDF4, LDF5, LDF6)
+
+One thing I've learned the hard way through this project is that you must stop and save your changes very frequently or you run the risk of losing hours, days or even weeks of hard work.
+
+So, now we have the files prepped and split/combined in the most parsimonious way for us to use and re-use them. Now I'm going to clean them up and make the necessary edits so that we can analyze the data and see what results we find. 
+
+###Cleaning Data and Eliminating Nulls/Fields with Zeroes/NAs
+
+Now, Here I can use a function to find the percentage of null values in a given column:
+```
+find_null <- function(column){
+  number_of_rows <- length(column)
+  number_of_na <- sum(is.na(column))
+  percentage_of_na_value <- (number_of_na/number_of_rows)*100
+  return(percentage_of_na_value)
+}
+``
+```
+I can use the lapply() function to apply the function to the entire data frame:
+```
+null_percent <- lapply(BIGDF,find_null)
+```
+And now I can Remove all the columns in which all the entries are NAs.
+```
+BIGDF <- BIGDF[,-which(null_percent == 100) ]
+```
+This removed:
+"member_id"
+"url"
+
+Looking at the classes we can see right off the bat that there are some more variables we can remove:
+
+Both "pub_rec_bankruptcies" and "tax_liens" have mostly zeroes, but I am interested in how they affect interest rates and grade, so I'm keeping them in. 
+
+1) "id" - The entire Column is not only characters, but every value is 'NA'
+2) "emp_title" - won't helps us in our analysis
+3) "pymnt_plan" - All the observations are 'N'
+4) "zip_code" - The last two elements are xx
+5) "initial_list_status" - all observations are 'f'
+6) "policy_code" - always '1'
+7) "application_type" - Always individual
+8) "collections_12_mths_ex_med","acc_now_delinq","chargeoff_within_12_mths","delinq_amnt" - All four of these are mostly zeroes
+9) "next_pymnt_d" - Mostly blank
+10) "title" - What lending club stated the loan's use was for. We'll can't to keep "purpose", since it looks like those values are standardized categories, whereas "Title", much like "desc" is a field that either a representative or customer filled in and they are all different things
+11) "mths_since_last_record","mths_since_last_delinq" - mostly NAs
+12) "issue_d","earliest_cr_line","last_pymnt_d","last_credit_pull_d" - already taken into account under 'delinquency' also, 'earliest_cr_line' has a date value, so I'm going to throw that one out in order to simplify the analysis. Also, issue_d has acused multiple issues over he many times I've tried to get this to work since it's classified as a chr, but is actually a date value, so let's get that out of there too. 
+13) "funded_amnt" & "funded_amnt_inv" are both the same as "loan_amnt", so we can take those two out as well
+14) "desc" is a user- entered field and is also represented in "purpose"
+
+I've put them all into one vector named "rem_cols" so that I can remove them easily from each data frame:
+
+```
+> rem_cols <- c("id","member_id","url","funded_amnt","funded_amnt_inv","emp_title","desc","pymnt_plan","zip_code","initial_list_status","policy_code","application_type","collections_12_mths_ex_med","acc_now_delinq","chargeoff_within_12_mths","delinq_amnt","next_pymnt_d","title","mths_since_last_record","mths_since_last_delinq","issue_d","last_pymnt_d", "last_credit_pull_d", "total_rec_late_fee", "recoveries", "collection_recovery_fee","next_pymnt_d", "out_prncp_inv", "total_pymnt_inv", "sec_app_earliest_cr_line", "annual_inc_joint", "dti_joint", "verification_status_joint", "sec_app_inq_last_6_mths", "sec_app_mort_acc", "sec_app_open_acc", "sec_app_revol_util", "sec_app_open_act_il", "sec_app_num_rev_accts", "sec_app_chargeoff_within_12_mths", "sec_app_collections_12_mths_ex_med" ,"sec_app_mths_since_last_major_derog", "hardship_flag","inq_last_6mths", "mths_since_rcnt_il", "open_il_12m", "open_il_24m", "hardship_type", "hardship_reason", "hardship_status", "mths_since_recent_bc_dlq", "disbursement_method", "deferral_term", "hardship_amount", "hardship_start_date", "hardship_end_date", "hardship_dpd", "hardship_loan_status","settlement_status", "settlement_date", "settlement_amount","settlement_percentage", "settlement_term", "hardship_length", "debt_settlement_flag_date", "payment_plan_start_date", "hardship_payoff_balance_amount", "hardship_last_payment_amount", "rev_bal_joint","orig_projected_additional_accrued_interest", "debt_settlement_flag", "revol_bal_joint", "total_bc_limit", "last_pymnt_amount","last_pymnt_amnt", "open_act_il", "application_type", "total_rec_prncp", "out_prncp", "mths_since_recent_bc", "il_util", "tot_hi_cred_lim", "percent_bc_gt_75", "bc_util", "num_bc_sats", "num_sats", "bc_open_to_buy", "total_il_high_credit_limit", "num_rev_accts", "num_bc_tl", "mo_sin_old_acct", "mo_sin_old_il_acct", "max_bal_bc", "total_rev_hi_lim","inq_fi", "total_cu_tl", "inq_last_12m", "num_actv_bc_tl", "num_op_rev_tl", "num_op_rev_tl_bal_gt_0", "num_rev_tl_bal_gt_0", "num_tl_120dpd_2m", "mths_since_recent_inq", "installment", "verification_status", "total_acc", "total_pymnt", "total_rec_int","total_bal_il","total_bal_ex_mort","sec_app_inq_last_6mths","pct_tl_nvr_dlq","num_tl_90g_dpd_24m", "num_tl_30dpd","num_il_tl", "mo_sin_rcnt_tl")
+
+```
+Now to remove those columns:
+```
+BIGDF <- BIGDF[, !names(BIGDF) %in% rem_cols]
+```
+Let's remove some rows that have blank rows for the variable "revol_util":
+```
+BIGDF %>% filter(BIGDF$revol_util != "") -> BIGDF
+```
+Let's remove those pesky "%" signs from "int_rate" and "revol_util":
+```
+BIGDF$int_rate <- as.numeric(gsub('%', '',BIGDF$int_rate))
+BIGDF$revol_util <- as.numeric(gsub('%', '',BIGDF$revol_util))
+BIGDFrevol_util <- as.numeric(gsub('%', '',BIGDF$revol_util)) / 100
+```
+Let's remove everything that's not the two statuses we want:
+```
+BIGDF %>% filter(loan_status != 'Current') -> BIGDF
+BIGDF %>% filter(loan_status != 'Default') -> BIGDF
+BIGDF %>% filter(loan_status != 'Issued') -> BIGDF
+BIGDF %>% filter(loan_status != 'In Grace Period') -> BIGDF
+BIGDF %>% filter(loan_status != 'Late (16-30 days)') -> BIGDF
+BIGDF %>% filter(loan_status != 'Late (31-120 days)') -> BIGDF
+```
+Let's get rid of the rows containing loans that are in statuses other than "Fully Paid" or "Charged Off" as these all represent loans that are currently being paid on or have extenuating circumstances. Pro tip - it looks like a lot, but I can just highlight each section of code and click the run command in R Markdown, so these can actually be done super quick:
+
+
+Now, I'm going to separate the data into categorical and numerical data and join it back together 
+
+Let's make a variable to store these items: 
+```
+> categ_cols <- c('term','grade','sub_grade','emp_length','home_ownership','purpose','addr_state')
+```
+A Separate smaller Data Frame containing only those categorical variables we haven't already taken out:
+```
+BIGDF %>% select(one_of(categ_cols)) -> df_categ
+```
+And a Data Frame with the numerical values left over:
+```
+BIGDF %>% select(-one_of(categ_cols)) -> df_numeric
+```
+Combine everything back together:
+```
+BIGDF <- cbind(df_categ,df_numeric)
+```
+
+Now to subset for "Fully Paid"" and "Charged Off":
+``` 
+BIGDF_fpaid <- filter(BIGDF,loan_status == 'Fully Paid')
+BIGDF_chargeoff <- filter(BIGDF,loan_status == 'Charged Off')
+```
+
+Great! Now that I have those subsets, so I have one data frame to analyze and one to compare the data to. Now to save:
+```
+write.csv(BIGDF, file = "BIGDF.csv")
+BIGDF <- read_csv("BIGDF.csv")
+BIGDF[,"X1"] <- NULL
+BIGDF <- as.data.frame(BIGDF)
+
+```
