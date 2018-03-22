@@ -1,0 +1,106 @@
+For my capstone project, I'm going to analyze the loan data that Lending Club provides.
+Lending Club is a Peer to Peer Lending Platform that makes use of investor's money to 
+provide the funds for the loans that they provide for their customers. Almost anyone
+can become an investor and provide money for loans. Why would they do this? Well,
+depending on the loan that you're providing money for, you may make more money than
+you've invested depending on customer attributes. High risk customers are a bigger
+risk, their credit history may not be perfect, which means they may have difficulty
+paying back the loan. However, since they are a higher risk, the loan will cost more
+and you can make more money on your investment. A lower risk customer is a much safer
+bet, but since their credit is great, this indicates they have  much higher chance of
+paying their loan back so their interest rate is lower, and you won't make as much
+money off of that investment. Then there are the customers who fail to pay their loan
+back, meaning you don't get the money back that you invested. Many people have had
+success putting their money to work for them through Lending Club, but is it a wise
+choice? and what are the most important factors you should look for before determining whether you want to back a loan? What are the attributes you can be aware of as a borrower that will give you and idea of what your loan will look like before you even borrow?
+I will be using the loan data that lending club provides on their website here:
+(https://www.lendingclub.com/info/download-data.action) to determine how their
+portfolio has been trending since 2012 (when the alternative lending industry really
+took off) through 2017. I will be using this data to determine if investing in a
+loan from lending club really is a good choice, as well as looking at variables that will be important to you as a borrower, and as someone looking to invest their money into a loan. 
+
+The approach I'd like to use to tackle this problem will rely heavily on data visualzation to show us eactly what the data we're analzing looks like. I would also like to apply statistical models if possilbe to determine which variables have the highest correlation to a loan's fate (Whether it gets paid in full or defaulted on).
+
+##The Data
+So, why did I choose this data set for my Capstone Project? I had a couple reasons for
+doing so. The first, is that I have prior experience working in the lending industry,
+so this data is familiar to me and I have insights into what variables would be
+important for different steps of this project. The second is that it is a big data set,
+and I want experience handling big sets of data and overcoming the concerns inherent in them to prepare me for future projects. 
+
+##The Questions
+When looking at data, we have to make sure that we're not only looking at the right data, but also asking the right questions. The five questions I've used as my guideline for this project are:
+
+-What questions do I want to ask?
+-What variables do I want to look for and understand?
+-Why did I choose those? 
+-What insights do I think we can gather from this data?
+-What’s the relevant business driven reason we want to spend time answering these 
+questions?
+
+
+"What are the percentages of loans in each status each year compared to the current
+total?"
+
+EX:(I'm making these numbers up):
+
+Year          | 2012         |2013          |  
+------------- | -------------|------------- | 
+Charged Off |3%|4% | 
+Fully Paid  | 97% |96% | 
+
+*"Based off of these percentages what can we tell about the trend of the portfolio's
+loan statuses over the last 5 years?"
+
+Either they’re increasing, decreasing or staying steady which has implications for 
+Lending Club’s business 
+
+*Here I want to examine the overall view of the loans that are either Fully Paid – 
+“Good Loans” or in Default/ Charged Off – Bad Loans. I’d like to use a Double Bar Chart
+or Stacked Bar chart to show Good Vs. Bad loan percentages for each variable. Variables
+I want to examine here will all include:  
+
+
+*Loan Amount ($0 - $40,000)  Data Point -> loan_amount
+*Loan Term (36 & 60 Months) Data Point -> term
+*Loan Interest Rate (0% - 40%) Data Point -> int_rate
+
+*"Of the loans that were Fully paid (Positive status) or Defaulted on or Charged Off, what were make up of these categories regarding Loan Grade?”
+*Loan Grades (Good Vs. Bad Loans)
+*Sub Grades (Good Vs. Bad Loans)
+
+*"What is the link between Grade, Interest Rate, & Default rate?" 
+*Data Points -> int_rate vs. grade vs. loan_status 
+
+*"Based on a loan’s grade & Loan’s interest rate, what is the probability that they’ll 
+default? For each grade category?""
+
+
+“What variables can we find in the consumer’s data related to the grade of the loans?”
+
+Variables I may want to analyze for (Good Loans Vs. Bad Loans): 
+*1) Borrower’s Income 
+2) Borrower’s DTI
+3) Age of Borrower’s established credit 
+4) Revolving credit utilization
+5) Total Credit Lines -> Total_Acc
+*6) Delinquents
+7) Bankruptcies
+8) public records 
+9) collections
+
+“What consumer factors correlate strongly to defaulting on their loan?”
+
+“Based off of these factors, what interest rate can a consumer expect to get on their loan?”
+
+If I have time: 
+“For investors, what factors would a consumer have that would mean it is a good/bad idea to invest in a particular loan?” 
+(Higher risk vs. Lower Risk)
+
+"If I’m wanting to invest, what is the best way to diversify my money into different loan grades to get the maximum return? (I.E. – 50% in A paper loans, 15% in B paper loans, 10% in C paper loans, etc.)"
+
+The deliverables on this would be:
+- The code used to analyze the data, including any predicitve algorithms
+- visuals representing the data that we used to come to our conclusions
+- A final report detailing the project from beginning to end
+- Suggestions of which variables to either look for or avoid in backing a loan or if you're a borrower. 
