@@ -1,0 +1,937 @@
+You've collected your data, cleaned it up, wrangled it into shape and explored it. Now it's time to perform some in-depth data analysis using machine learning. This step depends on you and your mentor, but here are some suggestions to get you going.
+
+# How do you frame your main question as a machine learning problem? 
+# What are the main features (also called independent variables or predictors) that you'll use?
+To frame my main question as a machine learning problem, is actually not that hard. In order to do that, the way to phrase it is: 
+
+What is the probability that if the dependent variable loan status is "Charged Off" (for which, I'm using the proxy "is_bad = 1") that the independent variable I'm looking for is also present. The higher the value, the more correlated the two variables are. 
+
+
+
+# Is it a supervised or unsupervised problem? 
+# If it is supervised, is it a regression or a classification?
+It is a supervised regression problem. A Regression looks to see the level of correlation between input and output variables. and it is a supervised problem since the algorithm is iteratively trying to perform better and better until an acceptable level of performance is reached. In this case it is that the alrogtithm runs until only each variable that has the highest level of correlation to my dependent variable is left. 
+
+
+#Which machine learning technique will you use?
+#How will you evaluate the success of your machine learning technique? What metric will you use?
+The model I'm going to use is the Step AIC model. This model will take the input of variables I give it, determine the level of statistical signifigance of each variable in relation to the dependent variable and if it is highly correlated, it will keep that variable and move onto the next one. It also does the same thing in reverse, where it will take the entire model of variables and throw out any variables that do not have a high level of correlation. The way to determine the success of the model is to check that once it's stopped running, every variable left in the model has the highest level of correlation possible. 
+
+Below is the portion of my Capstone project where I apply machine learning to my data set to identify which of the variables I should spend my time exploring and visualizing:
+
+
+####Step 1 - get the Baseline accuracy 
+```
+BIGDFbaseline = table(BIGDF$is_bad, sign(BIGDF$is_bad))
+BIGDFbaseline
+returns:
+         0      1
+  0 573071      0
+  1      0 148648
+```
+The amount of Charged Off loans in the data set is 148,648. Now, to find out the native accuracy of our dataset, start by adding the number of charged-off loans to the number of fully paid:
+```
+148648 + 573071
+returns:
+[1] 721719
+```
+Now we have the amount of Charged off loans and the Total number of loans. Divide Charge Offs by the Total number of Loans:
+```
+148648/721719
+returns:
+[1] 0.2059638
+```
+and finally subtract from 1:
+```
+1-0.2059638 
+returns:
+[1] 0.7940362
+```
+We can see clearly that our native accuracy is 79.40%, which is equal to the amount of loans in our data set that were fully paid.
+
+We can also use the confustion matrix function to find out this information:
+
+```
+confusionMatrix(Model1)
+Confusion Matrix and Statistics
+
+   
+         0      1
+  0 573071      0
+  1      0 148648
+                                   
+               Accuracy : 1        
+                 95% CI : (1, 1)   
+    No Information Rate : 0.794    
+    P-Value [Acc > NIR] : < 2.2e-16
+                                   
+                  Kappa : 1        
+ Mcnemar's Test P-Value : NA       
+                                   
+            Sensitivity : 1.000    
+            Specificity : 1.000    
+         Pos Pred Value : 1.000    
+         Neg Pred Value : 1.000    
+             Prevalence : 0.794    
+         Detection Rate : 0.794    
+   Detection Prevalence : 0.794    
+      Balanced Accuracy : 1.000    
+                                   
+       'Positive' Class : 0   
+```
+
+Of the data we have, 79.4% of the loans were "Fully Paid". 20.6% of the loans have been "Charged Off". Since this is a record of past data, this is a good representation of the accuracy of the data as well. If we were going to make a model predicting and trying to beat predictions, that is the baseline accuracy we would need to beat to be sure our model was performing better than random chance.
+
+ 
+
+#### Step 2 -  Splitting the data into test and training sets
+```
+Use caTools to split the data into the test and train data set. Ratio is 80/20. 80% will be train data and 20% will be test data
+
+set.seed(80)
+split = sample.split(BIGDF$is_bad, SplitRatio = 0.80)
+Train = subset(BIGDF, split == TRUE)
+Train_under <- ovun.sample(is_bad ~., data = BIGDF, method="under", N = 148648, seed = 40)$data
+Test = subset(BIGDF, split == FALSE)
+```
+Train is the data based on the original data. Train_under will be used as this will give a clearer indication of the accuracy of the model. Train_will be used to refine the model which will be derived from the Train data set. 
+
+#### Step 3 Choosing the Regression Model 
+
+I'm looking to see if the data is "Fully Paid" or "Charged Off", which can also be thought of as 1 or 0. In order to do analysis on the data, I'll need to figure out which regression model I want to use. There are two options:
+
+Linear Regression - Establish a relationship between Dependent and Independent variables
+Logistic Regresion - Ascertain the probability of an event between 0 & 1
+
+These two models really boil down to our data and what you're trying to look at. If you're wanting to discover a relationship between variables, youcan use a linear regresion. If your data deals with binary outcomes, then you'll want a regression model. This will predict the probability of something happening based on different independent variables (which also describes the relationship between variables)
+
+Since the dependent variable I'm interested in is binary (Did a loan get charged off, or did it get fully paid?) A Logistic regression model is what will work best here. 
+
+When doing a regression Model, we need to make sure that any variables that are of class 'chr' are re-classified as 'factor'.
+```
+Train$term <- as.factor(Train$term)
+Train$grade <- as.factor(Train$grade)
+Train$home_ownership <- as.factor(Train$home_ownership)
+
+Test$term <- as.factor(Test$term)
+Test$grade <- as.factor(Test$grade)
+Test$home_ownership <- as.factor(Test$home_ownership)
+```
+
+Finally, here is the function for the logistical regression model we're going to use initially to see what the relationships are between our existing vaiables and the variable I added "is_bad" which is a proxy for loans thathave the status "Charged Off"
+```
+Model1 <- glm(is_bad ~., data = Train, family = "binomial")
+```
+
+
+#### Step 4 Making Sense of the Regression Model
+So now I'm going to use the summary function to explore the logistical regression
+```
+summary(Model1)
+```
+This gives us the output of the Regression Model. We are going to look through the output to see which variables are statistically significant, and what we can remove intuitively based on our knowledge. The output is below. I've made it a point to point out in the data where we'll be able to intuitively remove some variables as it's easier to follow along:
+```
+Call:
+glm(formula = is_bad ~ . - loan_status, family = "binomial", 
+    data = Train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-6.2478  -0.7081  -0.5123  -0.2909   5.3385  
+
+Coefficients: (7 not defined because of singularities)
+                            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)               -3.027e+01  6.864e+00  -4.411 1.03e-05 ***
+term60 months              4.674e-01  9.332e-03  50.081  < 2e-16 ***
+gradeB                     2.438e+00  5.506e-02  44.283  < 2e-16 ***
+gradeC                     3.395e+00  6.191e-02  54.844  < 2e-16 ***
+gradeD                     4.299e+00  7.206e-02  59.659  < 2e-16 ***
+gradeE                     5.140e+00  8.454e-02  60.802  < 2e-16 ***
+gradeF                     5.994e+00  1.032e-01  58.097  < 2e-16 ***
+gradeG                     6.235e+00  1.385e-01  45.025  < 2e-16 ***
+sub_gradeA2                4.562e-01  6.116e-02   7.460 8.68e-14 ***
+sub_gradeA3                6.240e-01  5.963e-02  10.464  < 2e-16 ***
+sub_gradeA4                9.007e-01  5.432e-02  16.581  < 2e-16 ***
+sub_gradeA5                1.223e+00  5.228e-02  23.384  < 2e-16 ***
+sub_gradeB1               -9.879e-01  2.829e-02 -34.919  < 2e-16 ***
+sub_gradeB2               -7.372e-01  2.545e-02 -28.966  < 2e-16 ***
+sub_gradeB3               -4.676e-01  2.302e-02 -20.308  < 2e-16 ***
+sub_gradeB4               -2.062e-01  2.175e-02  -9.481  < 2e-16 ***
+sub_gradeB5                       NA         NA      NA       NA    
+sub_gradeC1               -7.604e-01  2.249e-02 -33.808  < 2e-16 ***
+sub_gradeC2               -5.312e-01  2.129e-02 -24.945  < 2e-16 ***
+sub_gradeC3               -3.593e-01  2.044e-02 -17.574  < 2e-16 ***
+sub_gradeC4               -1.677e-01  1.969e-02  -8.517  < 2e-16 ***
+sub_gradeC5                       NA         NA      NA       NA    
+sub_gradeD1               -6.367e-01  2.612e-02 -24.374  < 2e-16 ***
+sub_gradeD2               -4.427e-01  2.576e-02 -17.185  < 2e-16 ***
+sub_gradeD3               -3.367e-01  2.600e-02 -12.950  < 2e-16 ***
+sub_gradeD4               -1.343e-01  2.565e-02  -5.234 1.66e-07 ***
+sub_gradeD5                       NA         NA      NA       NA    
+sub_gradeE1               -6.690e-01  3.485e-02 -19.195  < 2e-16 ***
+sub_gradeE2               -4.980e-01  3.469e-02 -14.355  < 2e-16 ***
+sub_gradeE3               -3.448e-01  3.518e-02  -9.801  < 2e-16 ***
+sub_gradeE4               -1.867e-01  3.583e-02  -5.211 1.88e-07 ***
+sub_gradeE5                       NA         NA      NA       NA    
+sub_gradeF1               -7.309e-01  5.663e-02 -12.905  < 2e-16 ***
+sub_gradeF2               -4.334e-01  5.864e-02  -7.391 1.46e-13 ***
+sub_gradeF3               -3.706e-01  6.001e-02  -6.176 6.57e-10 ***
+sub_gradeF4               -1.700e-01  6.308e-02  -2.695 0.007045 ** 
+sub_gradeF5                       NA         NA      NA       NA    
+sub_gradeG1               -1.375e-01  1.123e-01  -1.225 0.220557    
+sub_gradeG2               -1.800e-01  1.166e-01  -1.545 0.122429    
+sub_gradeG3                8.608e-02  1.230e-01   0.700 0.483976    
+sub_gradeG4               -1.109e-01  1.318e-01  -0.842 0.400000    
+sub_gradeG5                       NA         NA      NA       NA    
+```
+Seeing as these are just sub categories of Grade and we know intuituvely that Grade is highly correlated (since it's determined by the customer's profile), we don't really need to keep these in.
+```
+Train[,"sub_grade"] <- NULL
+Test[,"sub_grade"] <- NULL
+BIGDF[,"sub_grade"] <- NULL
+```
+```
+home_ownershipMORTGAGE     4.828e-01  4.353e-01   1.109 0.267435    
+home_ownershipNONE         8.075e-01  6.309e-01   1.280 0.200550    
+home_ownershipOTHER        6.860e-01  6.199e-01   1.107 0.268441    
+home_ownershipOWN          5.889e-01  4.354e-01   1.353 0.176212    
+home_ownershipRENT         7.452e-01  4.354e-01   1.712 0.086949 .  
+home_ownership:
+```
+Surprisingly, home_ownership doesn't seem to be statistically signifigant, so we'll go ahead and remove that as well:
+```
+Train[,"home_ownership"] <- NULL
+Test[,"home_ownership"] <- NULL
+BIGDF[,"home_ownership"] <- NULL
+```
+```
+purposecredit_card         8.373e-02  4.182e-02   2.002 0.045277 *  
+purposedebt_consolidation  8.636e-02  4.124e-02   2.094 0.036268 *  
+purposeeducational        -5.858e+00  2.673e+01  -0.219 0.826528    
+purposehome_improvement    2.002e-01  4.362e-02   4.589 4.46e-06 ***
+purposehouse              -1.076e-02  6.472e-02  -0.166 0.868009    
+purposemajor_purchase      2.089e-01  4.833e-02   4.323 1.54e-05 ***
+purposemedical             2.363e-01  5.237e-02   4.512 6.41e-06 ***
+purposemoving              1.710e-01  5.742e-02   2.978 0.002901 ** 
+purposeother               7.473e-02  4.363e-02   1.713 0.086712 .  
+purposerenewable_energy    2.570e-01  1.324e-01   1.941 0.052273 .  
+purposesmall_business      5.326e-01  5.122e-02  10.397  < 2e-16 ***
+purposevacation            5.574e-02  6.063e-02   0.919 0.357978    
+purposewedding            -2.798e-01  1.171e-01  -2.389 0.016911 *  
+```
+It looks like there is definitely some correlation between the identified purpose of the loan, and whether or not the loan was charged off. However, since this variable is self-reported, and subject to human interpretation, as opposed to a static attribute associated with a credit profile, it is out of the scope of what I intend to investigate in this project. Investigating the relationship of this variable to propensity to charge off could be explored in a larger analysis of this data set. 
+```
+Train[,"purpose"] <- NULL
+Test[,"purpose"] <- NULL
+BIGDF[,"purpose"] <- NULL
+```
+```
+addr_stateAL               2.703e-01  7.459e-02   3.624 0.000291 ***
+addr_stateAR               2.827e-01  7.839e-02   3.606 0.000311 ***
+addr_stateAZ               4.207e-02  7.229e-02   0.582 0.560618    
+addr_stateCA              -1.649e-02  6.927e-02  -0.238 0.811821    
+addr_stateCO              -2.771e-01  7.323e-02  -3.784 0.000154 ***
+addr_stateCT              -3.263e-02  7.533e-02  -0.433 0.664898    
+addr_stateDC              -3.288e-01  1.037e-01  -3.172 0.001516 ** 
+addr_stateDE               6.443e-02  9.494e-02   0.679 0.497347    
+addr_stateFL               9.844e-02  6.986e-02   1.409 0.158789    
+addr_stateGA              -5.122e-02  7.157e-02  -0.716 0.474180    
+addr_stateHI              -1.855e-01  8.381e-02  -2.214 0.026838 *  
+addr_stateIA               1.475e+00  1.434e+00   1.028 0.303765    
+addr_stateID              -1.219e-01  1.588e-01  -0.768 0.442782    
+addr_stateIL               2.410e-02  7.108e-02   0.339 0.734586    
+addr_stateIN               1.067e-01  7.370e-02   1.448 0.147543    
+addr_stateKS              -1.954e-01  7.991e-02  -2.446 0.014457 *  
+addr_stateKY               1.072e-01  7.725e-02   1.388 0.165061    
+addr_stateLA               2.501e-01  7.527e-02   3.322 0.000893 ***
+addr_stateMA               7.490e-02  7.265e-02   1.031 0.302541    
+addr_stateMD               1.086e-01  7.235e-02   1.501 0.133361    
+addr_stateME              -6.211e-01  1.565e-01  -3.968 7.23e-05 ***
+addr_stateMI               6.028e-02  7.198e-02   0.837 0.402382    
+addr_stateMN               9.043e-02  7.334e-02   1.233 0.217573    
+addr_stateMO               1.529e-01  7.395e-02   2.068 0.038644 *  
+addr_stateMS               2.586e-01  8.474e-02   3.052 0.002275 ** 
+addr_stateMT              -1.051e-01  9.658e-02  -1.089 0.276296    
+addr_stateNC               7.780e-02  7.163e-02   1.086 0.277451    
+addr_stateND               3.020e-02  1.382e-01   0.219 0.826989    
+addr_stateNE               1.139e-01  1.037e-01   1.098 0.272147    
+addr_stateNH              -4.268e-01  9.083e-02  -4.699 2.61e-06 ***
+addr_stateNJ               1.225e-01  7.106e-02   1.724 0.084683 .  
+addr_stateNM               1.506e-01  8.198e-02   1.837 0.066162 .  
+addr_stateNV               2.035e-01  7.377e-02   2.759 0.005797 ** 
+addr_stateNY               1.369e-01  6.970e-02   1.964 0.049480 *  
+addr_stateOH               1.344e-01  7.121e-02   1.887 0.059131 .  
+addr_stateOK               3.160e-01  7.684e-02   4.112 3.92e-05 ***
+addr_stateOR              -3.094e-01  7.676e-02  -4.031 5.55e-05 ***
+addr_statePA               7.147e-02  7.117e-02   1.004 0.315258    
+addr_stateRI              -9.000e-02  8.796e-02  -1.023 0.306194    
+addr_stateSC              -1.941e-01  7.696e-02  -2.522 0.011659 *  
+addr_stateSD               1.947e-01  1.007e-01   1.933 0.053233 .  
+addr_stateTN               1.385e-01  7.383e-02   1.876 0.060617 .  
+addr_stateTX               1.993e-02  6.976e-02   0.286 0.775097    
+addr_stateUT              -1.515e-01  8.012e-02  -1.892 0.058548 .  
+addr_stateVA               9.695e-02  7.164e-02   1.353 0.175938    
+addr_stateVT              -4.183e-01  1.143e-01  -3.660 0.000252 ***
+addr_stateWA              -2.676e-01  7.319e-02  -3.656 0.000256 ***
+addr_stateWI              -1.237e-01  7.600e-02  -1.627 0.103666    
+addr_stateWV              -1.267e-01  8.957e-02  -1.415 0.157213    
+addr_stateWY              -3.684e-02  1.031e-01  -0.357 0.720928    
+```
+I also am going to take out "addr_state". It would be interesting to make a map and possibly see the correlation between certain states and see if custoemrs in certain states have higher chances of charging off their loans, however that is outside of the current scope of this project, so I'm going to remove that variable for now, as we just want to find what the best predictors of charges offs will be and visualize those data points. 
+```
+Train[,"addr_state"] <- NULL
+Test[,"addr_state"] <- NULL
+BIGDF[,"addr_state"] <- NULL
+```
+```
+loan_amnt                  1.274e-05  5.438e-07  23.432  < 2e-16 ***
+int_rate                  -1.864e-01  3.821e-03 -48.778  < 2e-16 ***
+annual_inc                -1.438e-06  1.224e-07 -11.740  < 2e-16 ***
+dti                        2.100e-02  5.090e-04  41.253  < 2e-16 ***
+delinq_2yrs                7.746e-02  3.960e-03  19.560  < 2e-16 ***
+open_acc                  -3.475e-03  1.348e-03  -2.578 0.009937 ** 
+pub_rec                    4.614e-02  1.627e-02   2.837 0.004559 ** 
+revol_bal                 -2.184e-06  2.788e-07  -7.833 4.78e-15 ***
+revol_util                 4.331e-01  1.859e-02  23.291  < 2e-16 ***
+total_acc                 -9.600e-03  4.938e-04 -19.440  < 2e-16 ***
+tot_coll_amt              -6.622e-08  4.251e-07  -0.156 0.876200    
+tot_cur_bal               -3.444e-07  7.458e-08  -4.619 3.86e-06 ***
+acc_open_past_24mths       4.179e-02  1.800e-03  23.221  < 2e-16 ***
+avg_cur_bal               -3.271e-06  6.549e-07  -4.995 5.88e-07 ***
+mo_sin_old_rev_tl_op      -1.349e-04  4.398e-05  -3.068 0.002157 ** 
+mo_sin_rcnt_rev_tl_op     -2.036e-03  2.807e-04  -7.252 4.10e-13 ***
+mort_acc                  -2.638e-02  2.481e-03 -10.631  < 2e-16 ***
+num_accts_ever_120_pd      1.064e-02  2.886e-03   3.685 0.000229 ***
+num_actv_rev_tl            3.226e-02  1.641e-03  19.658  < 2e-16 ***
+num_tl_op_past_12m         7.527e-03  2.878e-03   2.615 0.008921 ** 
+pub_rec_bankruptcies      -2.081e-02  1.847e-02  -1.126 0.259974    
+tax_liens                 -4.212e-03  1.849e-02  -0.228 0.819807    
+total_bal_ex_mort         -2.001e-07  1.287e-07  -1.554 0.120104    
+Year                       1.344e-02  3.393e-03   3.960 7.48e-05 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 566986  on 555148  degrees of freedom
+Residual deviance: 508101  on 555021  degrees of freedom
+  (22226 observations deleted due to missingness)
+AIC: 508357
+
+Number of Fisher Scoring iterations: 6
+```
+
+To re-cap the observations removed were:
+```
+sub_grade:
+Train[,"sub_grade"] <- NULL
+
+home_ownership:
+Train[,"home_ownership"] <- NULL
+
+purpose:
+Train[,"purpose"] <- NULL
+
+addr_state:
+Train[,"addr_state"] <- NULL
+
+I added the Year column in the original Data in order to make sense of it throughout time, so of course it's going to be VERY correlated. Since I added it however, I'm not looking to see if it's a predictor of Charge Offs:
+Train[,"Year"] <- NULL
+
+X1 is the dummy column R adds when loading data, so this one goes too:
+Train[,"X1"] <- NULL
+```
+Additionally, I am actually incredibly surprised that these varibales are NOT highly correlated to loan charge offs. Having worked in the lending indusry myself, I know for a fact that these variables make someone SIGNIFIGANTLY more likely to charge off their loans. These are actually MAJOR predictors of someone charginng off a loan. From my personal experience, I think that what's going on here is that the amount of loans that do have these issues (bankruptcies in particular) and still get approved is VERY small compared to our dataset that has 721,719 observations. I think these are the loans that just barely mangged to squeak through, while the majority of loans with bankruptcies didn't even get approved at all. A great exercise for future analysis would be to obtain, clean and compare Lending Club's data on loans that were declined as well with this data. I'm sure we'd have a much clearer picture of what's actually happening to the applications where customers do have bankruptcies (most likely declined before they ever even have a chance to get a loan):
+```
+tot_coll_amt              -6.622e-08  4.251e-07  -0.156 0.876200    
+pub_rec_bankruptcies      -2.081e-02  1.847e-02  -1.126 0.259974    
+tax_liens                 -4.212e-03  1.849e-02  -0.228 0.819807    
+total_bal_ex_mort         -2.001e-07  1.287e-07  -1.554 0.120104   
+```
+Since I can't intuitively remove these, I am going to leave these in for now and let the model determine whether or not they'll be eliminated.
+
+Great, now let's run the model again and see what we get:
+```
+Model1 <- glm(is_bad ~., data = Train, family = "binomial")
+```
+```
+summary(Model1)
+Call:
+glm(formula = is_bad ~ ., family = "binomial", data = Train)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-6.4368  -0.7109  -0.5213  -0.3134   5.2157  
+
+Coefficients:
+                         Estimate Std. Error z value Pr(>|z|)    
+(Intercept)             2.023e+02  2.261e+01   8.950  < 2e-16 ***
+term60 months           5.241e-01  9.126e-03  57.433  < 2e-16 ***
+gradeB                  6.830e-01  1.843e-02  37.060  < 2e-16 ***
+gradeC                  1.230e+00  2.348e-02  52.407  < 2e-16 ***
+gradeD                  1.666e+00  3.089e-02  53.923  < 2e-16 ***
+gradeE                  2.010e+00  3.870e-02  51.951  < 2e-16 ***
+gradeF                  2.285e+00  4.917e-02  46.471  < 2e-16 ***
+gradeG                  2.477e+00  6.180e-02  40.082  < 2e-16 ***
+loan_amnt               1.269e-05  5.306e-07  23.917  < 2e-16 ***
+int_rate               -4.394e-02  2.559e-03 -17.167  < 2e-16 ***
+annual_inc             -1.369e-06  1.212e-07 -11.291  < 2e-16 ***
+dti                     2.177e-02  5.054e-04  43.086  < 2e-16 ***
+delinq_2yrs             8.679e-02  3.936e-03  22.048  < 2e-16 ***
+open_acc               -4.399e-03  1.342e-03  -3.278  0.00105 ** 
+pub_rec                 6.509e-02  1.614e-02   4.033 5.50e-05 ***
+revol_bal              -2.310e-06  2.802e-07  -8.245  < 2e-16 ***
+revol_util              4.609e-03  1.816e-04  25.379  < 2e-16 ***
+total_acc              -1.008e-02  4.909e-04 -20.539  < 2e-16 ***
+tot_coll_amt           -1.655e-08  3.824e-07  -0.043  0.96548    
+tot_cur_bal            -4.499e-07  7.447e-08  -6.042 1.53e-09 ***
+acc_open_past_24mths    4.362e-02  1.790e-03  24.371  < 2e-16 ***
+avg_cur_bal            -3.303e-06  6.562e-07  -5.034 4.80e-07 ***
+mo_sin_old_rev_tl_op   -1.982e-04  4.377e-05  -4.527 5.98e-06 ***
+mo_sin_rcnt_rev_tl_op  -2.233e-03  2.799e-04  -7.977 1.50e-15 ***
+mort_acc               -2.701e-02  2.454e-03 -11.004  < 2e-16 ***
+num_accts_ever_120_pd   1.512e-02  2.865e-03   5.276 1.32e-07 ***
+num_actv_rev_tl         3.262e-02  1.630e-03  20.015  < 2e-16 ***
+num_tl_op_past_12m      1.446e-02  2.859e-03   5.057 4.25e-07 ***
+pub_rec_bankruptcies   -2.929e-02  1.836e-02  -1.596  0.11058    
+tax_liens              -1.554e-02  1.843e-02  -0.843  0.39923    
+total_bal_ex_mort      -5.804e-08  1.281e-07  -0.453  0.65045    
+
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 566986  on 555148  degrees of freedom
+Residual deviance: 512688  on 555111  degrees of freedom
+  (22226 observations deleted due to missingness)
+AIC: 512764
+
+Number of Fisher Scoring iterations: 5
+```
+That looks much better. 
+
+
+#### Step 5 - Using the stepAIC function on our training data
+
+Now that we've run a Logistical Regression and learned more about the data and how it's correlated, it's time to make sure that we are left with only the variables that are signifigant. One way to do this is an AIC model, which will test the variables in relation to "is_bad" which is our proxy for Charge Offs, so that we are only left with the ACTUAL predictors of loan Charge offs)
+```
+Aic_Model <- stepAIC(Model1,direction="both")
+```
+The AIC model has been taking quite a while and looking at the data again, I can see why. It looks like I have missed some NA values in some of the variables:
+```
+dti <dbl> - 24 NAs
+tot_coll_amt <int> -22202
+tot_cur_bal <int> -22202
+acc_open_past_24mths <int> - 6016
+avg_cur_bal <int> - 22202 
+mo_sin_old_rev_tl_op <int> - 22202
+mo_sin_rcnt_rev_tl_op <int>- 22202
+mort_acc  <int> - 6016
+num_accts_ever_120_pd <int> - 22202
+num_actv_rev_tl <int> - 22202
+num_tl_op_past_12m <int> - 22202
+total_bal_ex_mort <int> - 6016
+```
+# There are a couple of ways to go about dealing with these leftover values. One is to replace them with the average values of each column, meaning they won't change the data at all. The other is simply to omit them. This is what I wanted to do in the first place, and honestly this data set is so large that we could drop all of those values and still be fine. I also suspect that since the numbers are all either 22202 or 6016, that these are the same observations in each of the varibales so I'm going to go ahead and drop those to also help the processing of the Step AIC go faster.
+```
+TRAIN <- na.omit(Train)
+TRAIN[,"X1"] <- NULL
+BIGDF <- na.omit(BIGDF)
+TEST <- na.omit(Test)
+```
+
+#### Step 6 - Subsetting the data for faster analysis
+In order to help speed up processing time, I'm going to use a much smaller sample set. Let's use this to run regression and the StepAIC to figure out whihc variables are signifigant:
+```
+TRAINsample <- sample_frac(TRAIN, 0.1)
+Model1 <- glm(is_bad ~., data = TRAINsample, family = "binomial")
+Aic_Model <- stepAIC(Model1,direction="both")
+```
+This is the output of the AIC for us to inspect:  
+
+Start:  AIC=51310.41
+is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + open_acc + pub_rec + revol_bal + 
+    revol_util + total_acc + tot_coll_amt + tot_cur_bal + acc_open_past_24mths + 
+    avg_cur_bal + mo_sin_old_rev_tl_op + mo_sin_rcnt_rev_tl_op + 
+    mort_acc + num_accts_ever_120_pd + num_actv_rev_tl + num_tl_op_past_12m + 
+    pub_rec_bankruptcies + tax_liens + total_bal_ex_mort
+
+                        Df Deviance   AIC
+- pub_rec                1    51238 51308
+- pub_rec_bankruptcies   1    51239 51309
+- avg_cur_bal            1    51239 51309
+- tax_liens              1    51240 51310
+- open_acc               1    51240 51310
+- tot_coll_amt           1    51240 51310
+- revol_bal              1    51240 51310
+<none>                        51238 51310
+- tot_cur_bal            1    51241 51311
+- num_tl_op_past_12m     1    51241 51311
+- total_bal_ex_mort      1    51243 51313
+- num_accts_ever_120_pd  1    51243 51313
+- mo_sin_rcnt_rev_tl_op  1    51246 51316
+- annual_inc             1    51247 51317
+- mo_sin_old_rev_tl_op   1    51251 51321
+- mort_acc               1    51263 51333
+- total_acc              1    51265 51335
+- int_rate               1    51278 51348
+- num_actv_rev_tl        1    51282 51352
+- delinq_2yrs            1    51292 51362
+- revol_util             1    51294 51364
+- acc_open_past_24mths   1    51295 51365
+- home_ownership         5    51316 51378
+- loan_amnt              1    51310 51380
+- dti                    1    51440 51510
+- term                   1    51554 51624
+- grade                  6    51581 51641
+
+Step:  AIC=51308.43
+is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + open_acc + revol_bal + revol_util + 
+    total_acc + tot_coll_amt + tot_cur_bal + acc_open_past_24mths + 
+    avg_cur_bal + mo_sin_old_rev_tl_op + mo_sin_rcnt_rev_tl_op + 
+    mort_acc + num_accts_ever_120_pd + num_actv_rev_tl + num_tl_op_past_12m + 
+    pub_rec_bankruptcies + tax_liens + total_bal_ex_mort
+
+                        Df Deviance   AIC
+- pub_rec_bankruptcies   1    51239 51307
+- avg_cur_bal            1    51239 51307
+- open_acc               1    51240 51308
+- tot_coll_amt           1    51240 51308
+- revol_bal              1    51240 51308
+<none>                        51238 51308
+- tot_cur_bal            1    51241 51309
+- num_tl_op_past_12m     1    51241 51309
++ pub_rec                1    51238 51310
+- total_bal_ex_mort      1    51243 51311
+- num_accts_ever_120_pd  1    51243 51311
+- tax_liens              1    51245 51313
+- mo_sin_rcnt_rev_tl_op  1    51246 51314
+- annual_inc             1    51247 51315
+- mo_sin_old_rev_tl_op   1    51251 51319
+- mort_acc               1    51263 51331
+- total_acc              1    51265 51333
+- int_rate               1    51278 51346
+- num_actv_rev_tl        1    51282 51350
+- delinq_2yrs            1    51292 51360
+- revol_util             1    51294 51362
+- acc_open_past_24mths   1    51295 51363
+- home_ownership         5    51316 51376
+- loan_amnt              1    51310 51378
+- dti                    1    51440 51508
+- term                   1    51554 51622
+- grade                  6    51581 51639
+
+Step:  AIC=51307.29
+is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + open_acc + revol_bal + revol_util + 
+    total_acc + tot_coll_amt + tot_cur_bal + acc_open_past_24mths + 
+    avg_cur_bal + mo_sin_old_rev_tl_op + mo_sin_rcnt_rev_tl_op + 
+    mort_acc + num_accts_ever_120_pd + num_actv_rev_tl + num_tl_op_past_12m + 
+    tax_liens + total_bal_ex_mort
+
+                        Df Deviance   AIC
+- avg_cur_bal            1    51240 51306
+- open_acc               1    51241 51307
+- tot_coll_amt           1    51241 51307
+- revol_bal              1    51241 51307
+<none>                        51239 51307
+- tot_cur_bal            1    51242 51308
+- num_tl_op_past_12m     1    51242 51308
++ pub_rec_bankruptcies   1    51238 51308
++ pub_rec                1    51239 51309
+- num_accts_ever_120_pd  1    51244 51310
+- total_bal_ex_mort      1    51244 51310
+- tax_liens              1    51246 51312
+- mo_sin_rcnt_rev_tl_op  1    51247 51313
+- annual_inc             1    51248 51314
+- mo_sin_old_rev_tl_op   1    51251 51317
+- mort_acc               1    51263 51329
+- total_acc              1    51266 51332
+- int_rate               1    51278 51344
+- num_actv_rev_tl        1    51283 51349
+- delinq_2yrs            1    51292 51358
+- revol_util             1    51294 51360
+- acc_open_past_24mths   1    51297 51363
+- home_ownership         5    51317 51375
+- loan_amnt              1    51310 51376
+- dti                    1    51440 51506
+- term                   1    51555 51621
+- grade                  6    51584 51640
+
+Step:  AIC=51306.2
+is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + open_acc + revol_bal + revol_util + 
+    total_acc + tot_coll_amt + tot_cur_bal + acc_open_past_24mths + 
+    mo_sin_old_rev_tl_op + mo_sin_rcnt_rev_tl_op + mort_acc + 
+    num_accts_ever_120_pd + num_actv_rev_tl + num_tl_op_past_12m + 
+    tax_liens + total_bal_ex_mort
+
+                        Df Deviance   AIC
+- open_acc               1    51241 51305
+- tot_coll_amt           1    51242 51306
+- revol_bal              1    51242 51306
+<none>                        51240 51306
+- num_tl_op_past_12m     1    51243 51307
++ avg_cur_bal            1    51239 51307
++ pub_rec_bankruptcies   1    51239 51307
++ pub_rec                1    51239 51307
+- total_bal_ex_mort      1    51244 51308
+- num_accts_ever_120_pd  1    51245 51309
+- tax_liens              1    51246 51310
+- annual_inc             1    51249 51313
+- mo_sin_rcnt_rev_tl_op  1    51249 51313
+- mo_sin_old_rev_tl_op   1    51252 51316
+- tot_cur_bal            1    51258 51322
+- mort_acc               1    51264 51328
+- total_acc              1    51267 51331
+- int_rate               1    51279 51343
+- num_actv_rev_tl        1    51285 51349
+- delinq_2yrs            1    51293 51357
+- revol_util             1    51294 51358
+- acc_open_past_24mths   1    51298 51362
+- loan_amnt              1    51310 51374
+- home_ownership         5    51318 51374
+- dti                    1    51442 51506
+- term                   1    51555 51619
+- grade                  6    51585 51639
+
+Step:  AIC=51305.17
+is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_bal + revol_util + 
+    total_acc + tot_coll_amt + tot_cur_bal + acc_open_past_24mths + 
+    mo_sin_old_rev_tl_op + mo_sin_rcnt_rev_tl_op + mort_acc + 
+    num_accts_ever_120_pd + num_actv_rev_tl + num_tl_op_past_12m + 
+    tax_liens + total_bal_ex_mort
+
+                        Df Deviance   AIC
+- tot_coll_amt           1    51243 51305
+- revol_bal              1    51243 51305
+<none>                        51241 51305
+- num_tl_op_past_12m     1    51244 51306
++ pub_rec_bankruptcies   1    51240 51306
++ open_acc               1    51240 51306
++ pub_rec                1    51240 51306
++ avg_cur_bal            1    51241 51307
+- num_accts_ever_120_pd  1    51246 51308
+- total_bal_ex_mort      1    51246 51308
+- tax_liens              1    51247 51309
+- annual_inc             1    51249 51311
+- mo_sin_rcnt_rev_tl_op  1    51250 51312
+- mo_sin_old_rev_tl_op   1    51253 51315
+- tot_cur_bal            1    51260 51322
+- mort_acc               1    51264 51326
+- int_rate               1    51280 51342
+- total_acc              1    51281 51343
+- delinq_2yrs            1    51293 51355
+- acc_open_past_24mths   1    51298 51360
+- num_actv_rev_tl        1    51299 51361
+- revol_util             1    51302 51364
+- loan_amnt              1    51311 51373
+- home_ownership         5    51319 51373
+- dti                    1    51442 51504
+- term                   1    51556 51618
+- grade                  6    51586 51638
+
+Step:  AIC=51304.9
+is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_bal + revol_util + 
+    total_acc + tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + num_tl_op_past_12m + tax_liens + total_bal_ex_mort
+
+                        Df Deviance   AIC
+- revol_bal              1    51245 51305
+<none>                        51243 51305
++ tot_coll_amt           1    51241 51305
+- num_tl_op_past_12m     1    51245 51305
++ pub_rec_bankruptcies   1    51242 51306
++ open_acc               1    51242 51306
++ pub_rec                1    51242 51306
++ avg_cur_bal            1    51243 51307
+- total_bal_ex_mort      1    51248 51308
+- num_accts_ever_120_pd  1    51249 51309
+- tax_liens              1    51249 51309
+- annual_inc             1    51251 51311
+- mo_sin_rcnt_rev_tl_op  1    51252 51312
+- mo_sin_old_rev_tl_op   1    51254 51314
+- tot_cur_bal            1    51262 51322
+- mort_acc               1    51266 51326
+- int_rate               1    51282 51342
+- total_acc              1    51283 51343
+- delinq_2yrs            1    51294 51354
+- acc_open_past_24mths   1    51300 51360
+- num_actv_rev_tl        1    51301 51361
+- revol_util             1    51303 51363
+- loan_amnt              1    51312 51372
+- home_ownership         5    51321 51373
+- dti                    1    51444 51504
+- term                   1    51557 51617
+- grade                  6    51589 51639
+
+Step:  AIC=51304.77
+is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + num_tl_op_past_12m + tax_liens + total_bal_ex_mort
+
+                        Df Deviance   AIC
+<none>                        51245 51305
++ revol_bal              1    51243 51305
++ tot_coll_amt           1    51243 51305
+- num_tl_op_past_12m     1    51247 51305
++ pub_rec_bankruptcies   1    51244 51306
++ pub_rec                1    51244 51306
++ open_acc               1    51244 51306
++ avg_cur_bal            1    51244 51306
+- num_accts_ever_120_pd  1    51251 51309
+- tax_liens              1    51251 51309
+- total_bal_ex_mort      1    51252 51310
+- mo_sin_rcnt_rev_tl_op  1    51253 51311
+- annual_inc             1    51254 51312
+- mo_sin_old_rev_tl_op   1    51258 51316
+- tot_cur_bal            1    51265 51323
+- mort_acc               1    51268 51326
+- int_rate               1    51283 51341
+- total_acc              1    51284 51342
+- delinq_2yrs            1    51297 51355
+- num_actv_rev_tl        1    51301 51359
+- revol_util             1    51303 51361
+- acc_open_past_24mths   1    51303 51361
+- loan_amnt              1    51312 51370
+- home_ownership         5    51322 51372
+- dti                    1    51444 51502
+- term                   1    51559 51617
+- grade                  6    51592 51640
+
+######################################################################################
+# RESULTS OF THE AIC
+######################################################################################
+By the end of the AIC, we see that 20 variables are left that are statistically signifigant:
+
+term 
+grade 
+home_ownership 
+loan_amnt 
+int_rate  
+annual_inc  
+dti 
+delinq_2yrs  
+revol_util  
+total_acc  
+tot_cur_bal  
+acc_open_past_24mths 
+mo_sin_old_rev_tl_op  
+mo_sin_rcnt_rev_tl_op 
+mort_acc 
+num_accts_ever_120_pd 
+num_actv_rev_tl 
+num_tl_op_past_12m  
+tax_liens 
+total_bal_ex_mort
+######################################################################################
+# Now, let's inspect the final product:
+######################################################################################
+MODEL3 <- glm(is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + num_tl_op_past_12m + tax_liens + total_bal_ex_mort, data = TRAINsample, family = "binomial")
+summary(MODEL3)
+
+Call:
+glm(formula = is_bad ~ term + grade + home_ownership + loan_amnt + 
+    int_rate + annual_inc + dti + delinq_2yrs + revol_util + 
+    total_acc + tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + num_tl_op_past_12m + tax_liens + total_bal_ex_mort, 
+    family = "binomial", data = TRAINsample)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-1.9170  -0.7101  -0.5214  -0.3217   2.7759  
+
+Coefficients:
+                         Estimate Std. Error z value Pr(>|z|)    
+(Intercept)            -2.958e+00  1.091e+00  -2.711 0.006702 ** 
+term60 months           5.127e-01  2.881e-02  17.792  < 2e-16 ***
+gradeB                  6.525e-01  5.754e-02  11.341  < 2e-16 ***
+gradeC                  1.252e+00  7.309e-02  17.127  < 2e-16 ***
+gradeD                  1.662e+00  9.653e-02  17.216  < 2e-16 ***
+gradeE                  2.035e+00  1.207e-01  16.863  < 2e-16 ***
+gradeF                  2.414e+00  1.538e-01  15.696  < 2e-16 ***
+gradeG                  2.763e+00  1.959e-01  14.107  < 2e-16 ***
+loan_amnt               1.353e-05  1.644e-06   8.227  < 2e-16 ***
+int_rate               -4.965e-02  8.002e-03  -6.205 5.46e-10 ***
+annual_inc             -1.096e-06  3.747e-07  -2.925 0.003439 ** 
+dti                     2.255e-02  1.599e-03  14.105  < 2e-16 ***
+delinq_2yrs             9.279e-02  1.255e-02   7.395 1.42e-13 ***
+revol_util              4.124e-03  5.432e-04   7.592 3.15e-14 ***
+total_acc              -8.410e-03  1.357e-03  -6.196 5.81e-10 ***
+tot_cur_bal            -5.850e-07  1.302e-07  -4.494 7.00e-06 ***
+acc_open_past_24mths    4.243e-02  5.516e-03   7.692 1.45e-14 ***
+mo_sin_old_rev_tl_op   -4.879e-04  1.370e-04  -3.561 0.000369 ***
+mo_sin_rcnt_rev_tl_op  -2.556e-03  8.801e-04  -2.905 0.003678 ** 
+mort_acc               -3.733e-02  7.791e-03  -4.792 1.65e-06 ***
+num_accts_ever_120_pd   2.237e-02  8.754e-03   2.555 0.010619 *  
+num_actv_rev_tl         2.961e-02  3.918e-03   7.557 4.12e-14 ***
+num_tl_op_past_12m      1.408e-02  8.950e-03   1.573 0.115803    
+tax_liens               7.651e-02  2.882e-02   2.654 0.007950 ** 
+total_bal_ex_mort      -1.033e-06  3.877e-07  -2.664 0.007725 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 56570  on 55514  degrees of freedom
+Residual deviance: 51245  on 55485  degrees of freedom
+AIC: 51305
+
+Number of Fisher Scoring iterations: 5
+
+######################################################################################
+# TIGHTENING UP THE MODEL
+######################################################################################
+# We see that we can still get rid of one more variable:
+TRAINsample[,"num_tl_op_past_12m"] <- NULL
+
+MODEL4 <- glm(is_bad ~ term + grade + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + tax_liens + total_bal_ex_mort, data = TRAINsample, family = "binomial")
+summary(MODEL4)
+
+Call:
+glm(formula = is_bad ~ term + grade + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + tax_liens + total_bal_ex_mort, family = "binomial", 
+    data = TRAINsample)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-1.8757  -0.7110  -0.5234  -0.3242   2.8177  
+
+Coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)           -2.604e+00  8.800e-02 -29.587  < 2e-16 ***
+term60 months          4.919e-01  2.863e-02  17.182  < 2e-16 ***
+gradeB                 6.605e-01  5.749e-02  11.488  < 2e-16 ***
+gradeC                 1.267e+00  7.296e-02  17.367  < 2e-16 ***
+gradeD                 1.682e+00  9.634e-02  17.457  < 2e-16 ***
+gradeE                 2.058e+00  1.205e-01  17.087  < 2e-16 ***
+gradeF                 2.441e+00  1.535e-01  15.905  < 2e-16 ***
+gradeG                 2.797e+00  1.955e-01  14.308  < 2e-16 ***
+loan_amnt              1.287e-05  1.636e-06   7.867 3.63e-15 ***
+int_rate              -4.901e-02  7.991e-03  -6.134 8.59e-10 ***
+annual_inc            -8.165e-07  3.692e-07  -2.211 0.027014 *  
+dti                    2.208e-02  1.595e-03  13.845  < 2e-16 ***
+delinq_2yrs            8.962e-02  1.252e-02   7.155 8.35e-13 ***
+revol_util             3.972e-03  5.383e-04   7.377 1.61e-13 ***
+total_acc             -8.329e-03  1.355e-03  -6.145 8.00e-10 ***
+tot_cur_bal           -1.032e-06  1.217e-07  -8.483  < 2e-16 ***
+acc_open_past_24mths   4.623e-02  4.389e-03  10.533  < 2e-16 ***
+mo_sin_old_rev_tl_op  -5.192e-04  1.362e-04  -3.811 0.000138 ***
+mo_sin_rcnt_rev_tl_op -2.782e-03  8.691e-04  -3.201 0.001367 ** 
+mort_acc              -5.310e-02  7.644e-03  -6.947 3.74e-12 ***
+num_accts_ever_120_pd  2.460e-02  8.721e-03   2.821 0.004786 ** 
+num_actv_rev_tl        2.900e-02  3.913e-03   7.412 1.25e-13 ***
+tax_liens              7.204e-02  2.874e-02   2.506 0.012199 *  
+total_bal_ex_mort     -5.549e-07  3.842e-07  -1.444 0.148679    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 56570  on 55514  degrees of freedom
+Residual deviance: 51324  on 55491  degrees of freedom
+AIC: 51372
+
+Number of Fisher Scoring iterations: 5
+
+#And still one more:
+TRAINsample[,"total_bal_ex_mort"] <- NULL
+
+MODEL5 <- glm(is_bad ~ term + grade + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + tax_liens, data = TRAINsample, family = "binomial")
+summary(MODEL5)
+
+# Great! we're finally left with a model where every value is signfigant:
+Call:
+glm(formula = is_bad ~ term + grade + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + tax_liens, family = "binomial", data = TRAINsample)
+
+Deviance Residuals: 
+    Min       1Q   Median       3Q      Max  
+-1.8706  -0.7116  -0.5236  -0.3243   2.8242  
+
+Coefficients:
+                        Estimate Std. Error z value Pr(>|z|)    
+(Intercept)           -2.585e+00  8.706e-02 -29.694  < 2e-16 ***
+term60 months          4.922e-01  2.863e-02  17.190  < 2e-16 ***
+gradeB                 6.599e-01  5.749e-02  11.479  < 2e-16 ***
+gradeC                 1.266e+00  7.296e-02  17.356  < 2e-16 ***
+gradeD                 1.681e+00  9.634e-02  17.446  < 2e-16 ***
+gradeE                 2.057e+00  1.204e-01  17.075  < 2e-16 ***
+gradeF                 2.438e+00  1.535e-01  15.891  < 2e-16 ***
+gradeG                 2.793e+00  1.955e-01  14.291  < 2e-16 ***
+loan_amnt              1.277e-05  1.635e-06   7.810 5.73e-15 ***
+int_rate              -4.890e-02  7.990e-03  -6.120 9.34e-10 ***
+annual_inc            -9.792e-07  3.539e-07  -2.767 0.005664 ** 
+dti                    2.123e-02  1.482e-03  14.326  < 2e-16 ***
+delinq_2yrs            9.018e-02  1.252e-02   7.205 5.80e-13 ***
+revol_util             3.907e-03  5.364e-04   7.283 3.27e-13 ***
+total_acc             -8.999e-03  1.274e-03  -7.064 1.62e-12 ***
+tot_cur_bal           -1.101e-06  1.126e-07  -9.776  < 2e-16 ***
+acc_open_past_24mths   4.631e-02  4.389e-03  10.552  < 2e-16 ***
+mo_sin_old_rev_tl_op  -5.082e-04  1.360e-04  -3.737 0.000186 ***
+mo_sin_rcnt_rev_tl_op -2.807e-03  8.689e-04  -3.230 0.001237 ** 
+mort_acc              -5.005e-02  7.343e-03  -6.817 9.31e-12 ***
+num_accts_ever_120_pd  2.472e-02  8.719e-03   2.835 0.004587 ** 
+num_actv_rev_tl        2.991e-02  3.863e-03   7.741 9.84e-15 ***
+tax_liens              7.229e-02  2.875e-02   2.514 0.011932 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 56570  on 55514  degrees of freedom
+Residual deviance: 51326  on 55492  degrees of freedom
+AIC: 51372
+
+Number of Fisher Scoring iterations: 5
+
+# I am also going to remove the variables for months since oldest and most recent tradeline opened. The only time series data I want to use is the Year column I added to the data frame. 
+
+BIGDF[,"mo_sin_old_rev_tl_op"] <- NULL
+BIGDF[,"mo_sin_rcnt_rev_tl_op"] <- NULL
+
+# These are the 16 Variables that have the most correlation to Charge Offs, and ultimately the ones we want to explore visually. I'm also including the Year variable that I added so that we can understand how some of these are affected by time (in years) for a total of 16 variables with strong correlations that we'll visualize. 
+
+1) Year 
+2) term        
+3) grade               
+4) loan_amnt              
+5) int_rate              
+6) annual_inc             
+7) dti                   
+8) delinq_2yrs           
+9) revol_util             
+10) total_acc             
+11) tot_cur_bal           
+12) acc_open_past_24mths  
+13) mort_acc              
+14) num_accts_ever_120_pd 
+15) num_actv_rev_tl       
+16) tax_liens          
