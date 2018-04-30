@@ -1,0 +1,88 @@
+
+This project is focused specifically on providing insights and recommendations on what factors to keep in mind when choosing a Loan to invest in on Lending Club's Peer-to-Peer platform. There were quite a few hurdles that needed to be overcome in order to get us to this point. First, we had several large data sets, which we had to combine into one large data set. Once we had that final large data set, there were many missing values and data in some formats that had to be dealt with. Due to the sheer size of the original data set we had to manually take out all of the variables that we could intuitively tell weren't going to be of use in this project. Then we also filtered out all of the observations that were loans in progress or any other status that wasn't "Fully Paid" or "Charged Off" since we were interested in how these variables correlated to a completed loan. From 145 variables and 1,722,935 observations, we were able to cut the data down to 32 Variables and 721,719 observations. 
+
+From there, we were able to use a stepAIC machine learning algorithm to find 16 variables that were statistically correlated enough for us to use as identifiers for what to avoid when looking to invest in loans with lending club (15 from the data and the 'Year' variable that I added).
+
+These 16 variables were:
+1) Year (a variable we added)
+2) term        
+3) grade               
+4) loan_amnt              
+5) int_rate              
+6) annual_inc             
+7) dti                   
+8) delinq_2yrs           
+9) revol_util             
+10) total_acc             
+11) tot_cur_bal           
+12) acc_open_past_24mths  
+13) mort_acc              
+14) num_accts_ever_120_pd 
+15) num_actv_rev_tl       
+16) tax_liens   
+
+Now, even after using a step AIC to find the variables with the highest correlations, we still needed to actually see the data to determine what those relationships were and how they would impact our investment decisions. Using ggplot2, we also able to visualize those variables to see exactly what their relationship to charge offs looked like. We've also uncovered a couple of interesting patterns that weren't apparent before we took the time to visualize them, some of which took me completely by surprise. We're ultimately left with 10 variables that will have the biggest impact on choosing a loan to invest in and making a secure return on your investment:
+
+So to finally tie all of the data analysis together, here are the variables I recommend looking for when investing in a loan from Lending club and the variables I recommend avoiding if you want to make a return on your investment (10 in total):
+
+1) Term:
+Go for the 36 month term. As we can see, the shorter the term is, the higher the chance a customer will pay the loan back. The percentage of loans that charge off at 60 months is almost double the loans at 36 months!
+
+2) Grade: 
+You want to invest in loans that are graded A,B & C. Any Grades worse than C have a dangerously high chance of charging off and losing all of the money you invested.               
+3) Loan Amount:
+When looking for a loan to invest in, the sweet spot based on the graph seems to be right around 15-20k. Any more than that and you see loans with D,E,F & G Grades, heading into Charge Off territory, which we want to steer clear of. The higher the amount a customer borrows, the higher their monthly repayment will be and the more financial stress they'll be under.        
+
+4) Interest Rate:
+Clearly, the lower the better. Interest rate is going to be in lock-step with Grade, since grade is determined by the customer's credit attributes and FICO score (not provided to us). Lending Club then assigns a grade and determines the interest rate based off of that. Lower interest rates mean lower monthly repayment amounts, which means less stress on the customer to pay the loan back.The highest interest rate in the C Grade category looks to be around 18%. I would recommend investing in anything lower and not investing in anything higher than that. 
+
+5) Annual Income: 
+As a general rule, the higher the customer's income the better  the chance they'll be able to pay the loan back. I wouldn't necessarily target only the customers with the highest annual incomes, although that's not a bad bet. From the graph, I would look for a combination of annual income over 50k and lower loan amounts. This would be the safest best. 
+
+6) DTI (debt to income ratio): 
+You want to look for loans that have A, B & C Grades since they'll have lower dti, meaning they'll be under less financial stress to pay the loan back. Any grade lower than C either has too many other financial obligations which would impact their ability to pay back the Lending club loan, or at the very bottom of the barrel, they don't have any credit accounts, meaning they don't have any experience managing credit accounts and are at a much higher risk of charging off if they're using a financial instrument they don't understand. 
+
+7) Delinquents in the last 2 years: 
+You really don't want to invest in a loan with a customer who's had any delinquent payments in the last 2 years, as we can clearly see that the more of those delinquent payments they have, the worse their loan grades are (which means the higher the chance they will charge off their loan). I would recommend not investing in ANY loans with delinquents.
+
+8) Revolving Credit Utilized: 
+It's actually okay if the customer has some of their credit utilized, they don't have to be at zero to have a great credit score. The lower end of utilization of the Grade A loans looks actually to be about 30%. What you do want to avoid however, is any loan where the customer has 50% or more of their revolving credit utilized. Those loans quickly head into D,E,F & G territory where the chance of charge off is pretty high.
+
+9) Total Accounts Open: 
+This distribution looks a little more even that I thought it would, but we can see that the loans at Grade A more towards having more accounts open, and the loans at the bottom, with the worst grades move towards having less accounts open. A good rule of thumb here would be that having access to more credit is better, as it means that the customer likely has more experience using their credit. You can be pretty flexible here, but I'd recommend to invest in loans where the customer has many credit accounts open (Along with a better grade, lower dti,)
+
+10) Accounts Opened in the Last 24 Months:
+This is one of the ones that completely surprised me. The lowest grade loans are barely opening any credit lines. It actually stands to reason that the C & B tier loans would be the ones opening credit lines the most, since opening credit lines can help to improve your credit score by increasing your credit depth, which is how you go from a lower score to a higher one. Here also, it seems like more is better. If you're looking at investing and using number of accounts opened in the last 24 months, a safe bet is to go with the customers who have the highest amount, you're likely to get a B or C Grade loan with a very acceptable chance of paying their loan back.
+
+The other variables outside of this, did have high statistical correlation, however, from what I can tell, it looks like the amount of those data points present in the data was too small for us to draw any real conclusions. I think this is because if we look at a variable like Tax Liens for example, the number of data points is so small, that what we see is very skewed. I'd originally thoght that variables such as Tax Liens and Bankruptcies would definitely be a large predictor of loan Charge Offs, but I think the reverse situation is actually the truth. I think that the reason that we see so few of them in a data set this large is that a lot of accounts with credit issues like that get filtered out of the data by being delcined. So what's happening is most of the accounts with those issues are being filtered out before they ever even have a chance to make it into this data set and that this data set is so big, that the few accounts with derogatoy issues like that wind up being statistically irrelevant and we find much better predictors of loan charge offs in the larger data set. 
+
+So, to sum it all up:
+Your ideal customer would have an A,B or C Grade on their loan, higher amounts of accounts open, Interest rate under 18%, the shortest term possible, asking for a loan amount under 25k with an annual income of at least 50k (higher is better), a higher number of accounts opened in the last 24 months, and a DTI/ Revolving Credit Utilization ideally somewhere between 30%-50%, lower can be better, but you'd want to see some utilization as you want to make sure the customer knows how to use credit. 
+
+If you focus on these 10 attributes, you will have the most secure investment portfolio and the highest chance at making a return on your investment through Lending Club.
+
+```
+What to Look for:
+
+Terms: 36 Months 
+Grades: A,B & C
+Loan Amounts: Under 25k
+Interest Rate: Anything under 18%
+Annual Income: Over ~50k (Especially relative to loan amount)
+DTI/Revolving Credit Utilized: in the 10%-50% Range (~30% is the sweet spot)
+Delinquents: 0
+Accounts Open/in the last 24 months: More is better!
+```
+```
+What to Avoid: 
+
+Terms: longer than 36 Months  
+Grades: D,E,F,G
+Loan Amounts: in the higher end (anything really over 30k)
+Interest rate: Anything over 18% 
+Annual Income: under ~50K (Especially when combined with higher loan amounts)
+DTI/Revolving Credit Utilized: under 10% or over 50% 
+Delinquents in the past 2 years: ANY loans where the customer had delinquents
+Accounts Open/in the last 24 moonths: Low to zero. You want to see them growing their 
+credit
+```
