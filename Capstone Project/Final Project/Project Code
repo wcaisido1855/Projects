@@ -1,0 +1,420 @@
+# Working directory:
+setwd("~/R Studio Directory/Lending Club Loan Datsets 2007 - 2017/Loan Stats CSV files")
+
+# Packages:
+# Install
+install.packages("RColorBrewer")
+install.packages("e1071")
+install.packages("tidyverse")
+install.packages("caret")
+install.packages("rpart")
+install.packages("stringr")
+install.packages("lubridate")
+install.packages("rms")
+install.packages("kernlab")
+install.packages("reshape")
+install.packages("corrgram")
+install.packages("gridExtra")
+install.packages("ggplot2")
+install.packages("maps")
+install.packages("caTools")
+install.packages("ROSE")
+install.packages("MASS")
+install.packages("wesanderson")
+install.packages("RColorBrewer")
+
+# Libraries:
+library(e1071)
+library(tidyverse)
+library(caret)
+library(rpart)
+library(stringr)
+library(lubridate)
+library(rms)
+library(kernlab)
+library(reshape)
+library(corrgram)
+library(gridExtra)
+library(ggplot2)
+library(maps)
+library(caTools)
+library(ROSE)
+library(MASS)
+library(wesanderson)
+library("RColorBrewer")
+
+
+#######################################################################################
+CLEANING RAW DATA
+#######################################################################################
+# Load Raw Data:
+LDF1 <- read_csv("LoanStats_2012.csv")
+LDF2 <- read_csv("LoanStats_2013.csv")
+LDF3 <- read_csv("LoanStats_2014.csv")
+LDF4 <- read_csv("LoanStats_2015.csv")
+LDF5 <- read_csv("LoanStats_2016.csv")
+LDF5[,"X1"] <- NULL
+LDF6 <- read_csv("LoanStats_2017.csv")
+LDF6[,"X1"] <- NULL
+
+# Remove issue_d:
+LDF1[,"issue_d"] <- NULL
+LDF2[,"issue_d"] <- NULL
+LDF3[,"issue_d"] <- NULL
+LDF4[,"issue_d"] <- NULL
+LDF5[,"issue_d"] <- NULL
+LDF6[,"issue_d"] <- NULL
+ 
+# Add Year Column:
+LDF1$Year <- 2012
+LDF2$Year <- 2013
+LDF3$Year <- 2014
+LDF4$Year <- 2015
+LDF5$Year <- 2016
+LDF6$Year <- 2017
+
+# Make them into on big data frame:
+
+BIGDF <- rbind(LDF1, LDF2, LDF3, LDF4, LDF5, LDF6)
+
+# Cleaning Data and Eliminating Nulls/Fields with Zeroes/NAs
+BIGDF <- BIGDF
+missing_values <- sapply(BIGDF, function(x){ 
+    percentage <- sum(is.na(x))/length(x)
+    percentage < 0.2
+    })
+BIGDF <- BIGDF[,missing_values ==TRUE]
+BIGDF
+
+# Remove Uniqe Values (only one is "Policy Code"):
+unique_values <- sapply(BIGDF, function(x) {
+size <- length(unique(x[!is.na(x)]))
+size > 1
+})
+BIGDF <- BIGDF[,unique_values == TRUE]
+BIGDF
+
+# Assign Rem_Cols:
+rem_cols <- c("funded_amnt",
+              "funded_amnt_inv", 
+              "installment",
+              "emp_title",
+              "emp_length", 
+              "verification_status",
+              "pymnt_plan", 
+              "title", 
+              "zip_code",
+              "earliest_cr_line",
+              "initial_list_status",
+              "application_type",
+              "collections_12_mths_ex_med",
+              "acc_now_delinq",
+              "chargeoff_within_12_mths",
+              "delinq_amnt",
+              "title",
+              "last_pymnt_d", 
+              "last_credit_pull_d", 
+              "total_rec_late_fee", 
+              "recoveries", 
+              "collection_recovery_fee",
+              "next_pymnt_d", 
+              "out_prncp_inv", 
+              "total_pymnt_inv",  
+              "hardship_flag",
+              "inq_last_6mths", 
+              "disbursement_method", 
+              "debt_settlement_flag", 
+              "revol_bal_joint", 
+              "total_bc_limit", 
+              "last_pymnt_amount",
+              "last_pymnt_amnt", 
+              "open_act_il", 
+              "application_type", 
+              "total_rec_prncp", 
+              "out_prncp", 
+              "mths_since_recent_bc", 
+              "tot_hi_cred_lim", 
+              "percent_bc_gt_75", 
+              "bc_util", 
+              "num_bc_sats", 
+              "num_sats", 
+              "bc_open_to_buy", 
+              "total_il_high_credit_limit", 
+              "num_rev_accts", 
+              "num_bc_tl", 
+              "mo_sin_old_acct",   
+              "mo_sin_old_il_acct", 
+              "total_rev_hi_lim",
+              "num_actv_bc_tl", 
+              "num_op_rev_tl", 
+              "num_op_rev_tl_bal_gt_0", 
+              "num_rev_tl_bal_gt_0", 
+              "num_tl_120dpd_2m", 
+              "mths_since_recent_inq",
+              "total_pymnt",
+              "total_rec_int",
+              "pct_tl_nvr_dlq",
+              "num_tl_90g_dpd_24m", 
+              "num_tl_30dpd",
+              "num_il_tl", 
+              "mo_sin_rcnt_tl")
+
+# remove those columns:
+BIGDF <- BIGDF[, !names(BIGDF) %in% rem_cols]
+
+# Remove rows w/ blanks for "revol_util":
+BIGDF %>% filter(BIGDF$revol_util != "") -> BIGDF
+
+# Remove "%" sign from "int_rate" & "revol_util":
+BIGDF$int_rate <- as.numeric(gsub('%', '',BIGDF$int_rate))/100
+BIGDF$revol_util <- as.numeric(gsub('%', '',BIGDF$revol_util))
+BIGDF$revol_util <- as.numeric(gsub('%', '',BIGDF$revol_util))/100
+
+# Remove Statuses that are NOT "Fully Paid" or "Charged Off":
+BIGDF %>% filter(loan_status != 'Current') -> BIGDF
+BIGDF %>% filter(loan_status != 'Default') -> BIGDF
+BIGDF %>% filter(loan_status != 'Issued') -> BIGDF
+BIGDF %>% filter(loan_status != 'In Grace Period') -> BIGDF
+BIGDF %>% filter(loan_status != 'Late (16-30 days)') -> BIGDF
+BIGDF %>% filter(loan_status != 'Late (31-120 days)') -> BIGDF
+
+# Assign Variable to store Categorical Variables:
+categ_cols <- c('term','grade','sub_grade','home_ownership','purpose','addr_state')
+
+# Data Frame containing Categorical Variables:
+BIGDF %>% select(one_of(categ_cols)) -> df_categ
+
+# Data Frame with left over numerical values:
+BIGDF %>% select(-one_of(categ_cols)) -> df_numeric
+
+#Combine everything back together:
+BIGDF <- cbind(df_categ,df_numeric)
+
+# add a column denoting factors (1 for "charged off") and ( 0 for "fully paid") for data analysis:
+Bad_indicators <- c("Charged Off")
+BIGDF$is_bad <- ifelse(BIGDF$loan_status %in% Bad_indicators, 1, 
+              ifelse(BIGDF$loan_status =="", NA, 0))
+
+#######################################################################################
+CLEANED DATA - START HERE
+#######################################################################################
+# Save cleaned data as .csv, load it, remove "X1", redefine as a data frame: 
+write.csv(BIGDF, file = "BIGDF.csv")
+BIGDF <- read_csv("BIGDF.csv")
+BIGDF[,"X1"] <- NULL
+BIGDF[,"addr_state"] <- NULL
+BIGDF[,"sub_grade"] <- NULL
+BIGDF <- as.data.frame(BIGDF)
+
+BIGDF <- read_csv("BIGDF.csv")
+BIGDF[,"X1"] <- NULL
+BIGDF[,"addr_state"] <- NULL
+BIGDF[,"sub_grade"] <- NULL
+BIGDF <- as.data.frame(BDF)
+
+#######################################################################################DATA CLEANING COMPLETE - CODE FOR DATA ANALYSIS IS BELOW
+#######################################################################################
+# Get Accuracy:
+BIGDFbaseline = table(BIGDF$is_bad, sign(BIGDF$is_bad))
+BIGDFbaseline
+         0      1
+  0 549973      0
+  1      0 144005
+
+144005+549973
+returns:
+[1] 693978
+
+144005/693978
+returns:
+[1] 0.2075066
+
+1-0.2075066
+returns:
+[1] 0.7924934
+
+# Use caTools to split the data into the test and train data set. Ratio is 80/20. 80% will be train data and 20% will be test data. Create Over_Under subset to refine regression models:
+set.seed(80)
+split = sample.split(BIGDF$is_bad, SplitRatio = 0.80)
+Train = subset(BIGDF, split == TRUE)
+Train_under <- ovun.sample(is_bad ~., data = BIGDF, method="under", N = 144005, seed = 40)$data
+Test = subset(BIGDF, split == FALSE)
+
+# Use as.factor() function to change "term", "grade", and "home_ownership" variables from class 'chr' to 'factor' in order for analysis to run correctly:
+Train$term <- as.factor(Train$term)
+Train$grade <- as.factor(Train$grade)
+Train$home_ownership <- as.factor(Train$home_ownership)
+
+Test$term <- as.factor(Test$term)
+Test$grade <- as.factor(Test$grade)
+Test$home_ownership <- as.factor(Test$home_ownership)
+
+
+
+# Logistic Regression Model:
+Model1 <- glm(is_bad ~. -loan_status, data = Train, family = "binomial")
+summary(Model1)
+ 
+# Remove "sub_grade" from data:
+Train[,"sub_grade"] <- NULL
+Test[,"sub_grade"] <- NULL
+BIGDF[,"sub_grade"] <- NULL
+
+# Remove "home_ownership" from data:
+Train[,"home_ownership"] <- NULL
+Test[,"home_ownership"] <- NULL
+BIGDF[,"home_ownership"] <- NULL
+
+# Remove "purpose" from data:
+Train[,"purpose"] <- NULL
+Test[,"purpose"] <- NULL
+BIGDF[,"purpose"] <- NULL
+
+# Remove "addr_state" from data:
+Train[,"addr_state"] <- NULL
+Test[,"addr_state"] <- NULL
+Test[,"addr_state"] <- NULL
+
+# Remove "Year" from only Test and Train Data sicen we're also looking for that in our variables later:
+Train[,"Year"] <- NULL
+Test[,"Year"] <- NULL
+
+# Remove the dummy vaiable "X1" from all data:
+Train[,"X1"] <- NULL
+Test[,"X1"] <- NULL
+BIGDF[,"X1"] <- NULL
+
+# Run the model again minus variables we can intuitively take out:
+Model1 <- glm(is_bad ~., data = Train, family = "binomial")
+summary(Model1)
+
+# Getting rid of NA values that were overlooked (Need to get rid of them for Models to run smoothly)
+TRAIN <- na.omit(Train)
+TRAIN[,"X1"] <- NULL
+BIGDF <- na.omit(BIGDF)
+TEST <- na.omit(Test)
+
+# Subsetting smaller Test and Train sets so that the AIC algorithm will run faster
+TRAINsample <- sample_frac(TRAIN, 0.1)
+
+# Run the regression again on the smaller sample:
+Model1 <- glm(is_bad ~., data = TRAINsample, family = "binomial")
+
+# Run AIC Model on smaller Training set:
+Aic_Model <- stepAIC(Model1,direction="both")
+
+# Verifying results of AIC by comparing to the glm() for "Model1":
+MODEL3 <- glm(is_bad ~ term + grade + home_ownership + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + num_tl_op_past_12m + tax_liens + total_bal_ex_mort, data = TRAINsample, family = "binomial")
+summary(MODEL3)
+
+# Dropping "num_tl_op_past_12m"
+TRAINsample[,"num_tl_op_past_12m"] <- NULL
+
+# Inspecting the model after dropping "num_tl_op_past_12m"
+MODEL4 <- glm(is_bad ~ term + grade + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + tax_liens + total_bal_ex_mort, data = TRAINsample, family = "binomial")
+summary(MODEL4)
+
+# Dropping "total_bal_ex_mort"
+TRAINsample[,"total_bal_ex_mort"] <- NULL
+
+# Inspecting the model one last time
+MODEL5 <- glm(is_bad ~ term + grade + loan_amnt + int_rate + 
+    annual_inc + dti + delinq_2yrs + revol_util + total_acc + 
+    tot_cur_bal + acc_open_past_24mths + mo_sin_old_rev_tl_op + 
+    mo_sin_rcnt_rev_tl_op + mort_acc + num_accts_ever_120_pd + 
+    num_actv_rev_tl + tax_liens, data = TRAINsample, family = "binomial")
+summary(MODEL5)
+
+#######################################################################################
+DATA ANALYSIS COMPETE - CODE FOR VISUALIZATIONS IS BELOW
+#######################################################################################
+#1) Plot for Loan Status across all 5 years (Variabble "Year):
+plotyear <- ggplot(BIGDF, aes(x = as.factor(Year), fill = loan_status)) + geom_bar(position = "fill") + labs(x = "Year", y = "Proportion" )
+grid.arrange(plotyear, ncol = 1)
+table(factor(BIGDF$loan_status),BIGDF$Year)
+ 
+#2) Plot of Loan Status vs. Term Length (Variable "term"):
+plotTerm <- ggplot(BIGDF, aes(x = as.factor(term), fill = loan_status)) + geom_bar(position = "fill") + labs(x = "Term", y = "Proportion" )
+grid.arrange(plotTerm, ncol = 2)
+table(factor(BIGDF$loan_status),BIGDF$term)
+
+# 3) Plot of Loan Status vs Grade (Variable "grade"):
+plotgrade <- ggplot(BIGDF, aes(x = as.factor(grade), fill = loan_status)) + geom_bar(position = "fill") + labs(x = "grade", y = "Proportion" )
+grid.arrange(plotgrade, ncol = 1)
+table(factor(BIGDF$loan_status),BIGDF$grade)
+
+# 4) Plot of Funded Loan Amounts by Grade (Variable "loan_amnt"):
+ggplot(data=BIGDF, aes(loan_amnt, col = grade))+geom_histogram(bins=45) + xlab('Loan Amount')+ylab('loan Status')+facet_grid(grade~.)
+
+# 5) Plot of Interest Rate vs. Grade (Variable "int_rate" & "grade"):
+IntPlot <- ggplot(BIGDF, aes(int_rate, col = grade))+geom_bar() + xlab('Interest Rate')+ylab('Grade')+facet_grid(grade~.)
+IntPlot
+
+# 6) Plot of Annual Income vs. Loan amount by Grade (Variable "annual_inc"):
+mydata <- filter(BIGDF, annual_inc < 500000)
+p <- ggplot(mydata, aes(annual_inc, loan_amnt)) +
+  geom_point(aes(colour = grade)) +
+  labs(title = 'annual inc vs. loan amnt') +
+  geom_smooth()
+p + xlim(0,100000) + facet_grid(. ~ grade) + geom_smooth()
+p
+
+# 7) PLot of Loan Status Vs. DTI (Variable "dti"):
+
+# 8) Plot of Loan Status vs. Delinquents over the last 2 years (Variable "delinq_2yrs"):
+plotdelinquents <- ggplot(BIGDF, aes(x = as.factor(delinq_2yrs), fill = loan_status)) + geom_bar(position = "fill") + labs(x = "delinq_2yrs", y = "Proportion" )
+grid.arrange(plotdelinquents, ncol = 1)
+table(factor(BIGDF$loan_status),BIGDF$delinq_2yrs)
+
+
+Delinq <- ggplot(data = BIGDF, aes(delinq_2yrs)) + 
+  geom_density(aes(fill = grade)) + 
+  labs(title = 'Total Accounts Open Vs. Grade') + facet_grid(grade~.)
+Delinq
+
+# 9) Plot of Revolving credit Utilization (Variable "revol_util"):
+Rev_Cred_Plot <- ggplot(data = BIGDF, aes(revol_util)) + 
+  geom_density(aes(fill = grade)) + 
+  labs(title = 'Revolving Utilization distribution by grade') + facet_grid(grade~.)
+Rev_Cred_Plot 
+
+# 10) Plot of Total Accounts (Variable "total_acc"):
+Tot_Acc_Plot <- ggplot(data = BIGDF, aes(total_acc)) + 
+  geom_density(aes(fill = grade)) + 
+  labs(title = 'Total Accounts Open by Grade') + facet_grid(grade~.)
+Tot_Acc_Plot
+
+# 11) Plot of Total Current Balances (Variable "tot_cur_bal"):
+TCB <- ggplot(data = BIGDF, aes(tot_cur_bal)) + 
+  geom_density(aes(fill = grade)) + 
+  labs(title = '') + facet_grid(grade~.)
+TCB 
+
+# 12) Plot of Accounts Opened in the last 24 Months (Variable "acc_open_past_24mths"):
+AOp24MPlot <- ggplot(BIGDF, aes(acc_open_past_24mths, col = grade))+geom_bar() + xlab('Interest Rate')+ylab('Grade')+facet_grid(grade~.)
+AOp24MPlot
+
+# 13) Plot of Mortgage Accounts (Variable "mort_acc")
+MortgagePlot <- ggplot(BIGDF, aes(mort_acc, col = grade))+geom_bar() + xlab('Mortgages')+ylab('Grade')+facet_grid(grade~.)
+MortgagePlot
+
+# 14) Plot of Number of Accounts Ever 120 Days Past Due (Variable "num_accts_ever_120_pd"):
+NA120PD <- ggplot(BIGDF, aes(num_accts_ever_120_pd, col = grade))+geom_bar() + xlab('Number of Accounts Ever More than 120 Days Past Due by Grade')+ylab('Grade')+facet_grid(grade~.)
+NA120PD
+
+# 15) Plot of Number of Active Revolving Tradelines (Variable "num_actv_rev_tl"):
+Rev_tl_Plot <- ggplot(BIGDF, aes(num_actv_rev_tl, col = grade))+geom_bar() + xlab('Number of Active Revolving Tradelines ')+ylab('Grade')+facet_grid(grade~.)
+Rev_tl_Plot
+
+# 16) Plot of Tax Liens (Variable "tax_liens"):
+TaxLiensPlot <- ggplot(BIGDF, aes(tax_liens, col = grade))+geom_bar() + xlab('Tax Liens')+ylab('Grade')+facet_grid(grade~.)
+TaxLiensPlot
+
