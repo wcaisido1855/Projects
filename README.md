@@ -1,6 +1,6 @@
-Welcome! Thanks for checking out my GitHub Repositories! I'm still getting the hang of file and folder creation and moving around, so please bear with the weird numbering conventions ans I move things around.
+Welcome! Thanks for checking out my GitHub Repositories! I'm still getting the hang of file and folder creation and moving around, so please bear with the weird numbering conventions as I move things around.
 
-1) The 1t repository - Capstone Project is my collection of files related to my course project - known as a "Capstone Project" for the "Introduction to Data Science Course" paid bootcamp I completed through SpringBoard.com. This Project is basically a thesis paper that was required to complete the 100 hour course. This repository is all the wokr that led up to my final completed project. I didn't know about version control back then unfortunately, so most of those files are almost the same as the current final project, seeing as I didn't post them until I had the final part of each section completed instead of editing and saving changes as I went. *Note* My final Project is not in that folder, it is in another folder detailed below.
+1) The 1st repository - Capstone Project is my collection of files related to my course project - known as a "Capstone Project" for the "Introduction to Data Science Course" paid bootcamp I completed through SpringBoard.com. This Project is basically a thesis paper that was required to complete the 100 hour course. This repository is all the wokr that led up to my final completed project. I didn't know about version control back then unfortunately, so most of those files are almost the same as the current final project, seeing as I didn't post them until I had the final part of each section completed instead of editing and saving changes as I went. *Note* My final Project is not in that folder, it is in another folder detailed below.
 
 2) The 2nd repository - Foundations of Data Science Coursework, is the repository of all of the code for the required coursework for the "Introduction to Data Science" course I completed through SpringBoard.com. I'll be honest, most fo the code there is pretty rough since those were my beginning attempts at learning how to code in R language. 
 
@@ -10,9 +10,9 @@ Welcome! Thanks for checking out my GitHub Repositories! I'm still getting the h
 
 5) The 5th repository -HTML, CSS, JS Projects is my repository of front-end Web Development projects. Here are all of the tutorial files and website attempts I'm working on from a couple of Udemy courses on Web Development. 
 
-I'm currently working through two courses:
+<p>I'm currently working through two courses:
 
-The Web Development Bootcamp by Colt Steele (Very in depth on each and every single element):
+<p>The Web Development Bootcamp by Colt Steele (Very in depth on each and every single element):
 https://www.udemy.com/the-web-developer-bootcamp/learn/v4/overview
 
 and 
