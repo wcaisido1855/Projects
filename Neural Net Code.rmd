@@ -1,0 +1,330 @@
+# Makes the function first:
+two_spirals <- function(N = 200,
+                        radians =3*pi,
+                        theta0 = pi/2,
+                        labels = 0:1) {
+  N1 <- floor(N / 2)
+  N2 <- N - N1
+  
+  theta <- theta0 +runif(N1) * radians
+  spiral1 <- cbind(-theta * cos(theta) +runif(N1),
+                  theta * sin(theta) +runif(N1))
+  spiral2 <- cbind(theta * cos(theta) + runif(N2),
+                  -theta * sin(theta) + runif(N2))
+  points <- rbind(spiral1, spiral2)
+  classes <- c(rep(0, N1), rep(1, N2))
+
+# Created a data Frame:
+  data.frame(x1 = points[ ,1],
+             x2 = points[ ,2],
+             class = factor(classes, labels = labels))
+  }
+#Sets seed (creates example data) 
+set.seed(42)  
+
+#Creates Variables:
+hotdogs <- two_spirals(labels = c('not hot dog', 'hot dog'))
+
+# Let's imagine we have been given some two-dimensional data about a sample of objects, along with their labels. Our sample data set includes r nrow(hotdogs) observations. Here is a random sample of five:
+knitr::kable(hotdogs[sample(nrow(hotdogs), 5), ], row.names = FALSE, digits = 2)
+
+
+# And a scatter plot of all of the Data Points:
+library(ggplot2)
+theme_set(theme_classic())
+ggplot(hotdogs) + 
+  aes(x1, x2, colour = class) +
+  geom_point() + 
+  labs(x = expression(x[1]),
+       y = expression(x[2]))
+       
+# Fitting a logistic regression model in R is easy:
+logreg <- glm(class ~ x1 + x2, family = binomial, data = hotdogs)
+correct <- sum((fitted(logreg) > .5) + 1 == as.integer(hotdogs$class))
+
+# Plot of the "Classified" (not really well yet) data points:
+# Beta gets the coefficient of the logarithmic equation above:
+beta <- coef(logreg)
+
+# defining the new variable 'grid' which gets the classification of 'not hot dogs' vs. 'hot dogs' - increments on the graph are by .25:
+grid <- expand.grid(x1 = seq(min(hotdogs$x1) - 1,
+                             max(hotdogs$x1) + 1,
+                             by = .25),
+                    x2 = seq(min(hotdogs$x2) - 1,
+                             max(hotdogs$x2) + 1,
+                             by = .25))
+                             
+# Adding a column called 'class' to the variable 'grid' which stores the factors that are labelled 'hot dog' & 'not hot dog' based on the predict function's output:
+grid$class <- factor((predict(logreg, newdata = grid) > 0) * 1,
+                     labels = c('not hot dog', 'hot dog'))
+
+# Plot Current data classification:
+ggplot(hotdogs) + aes(x1, x2, colour = class) +
+  geom_point(data = grid, size = .5) +
+  geom_point() +
+  labs(x = expression(x[1]), y = expression(x[2])) +
+  geom_abline(intercept = -beta[1]/beta[3],
+              slope = -beta[2]/beta[3])
+               
+               
+               
+# Forward Propagation:               
+# Defining a function to perform the forward propagation process in R:               
+feedforward <- function(x, w1, w2) {
+  z1 <- cbind(1, x) %*% w1
+  h <- sigmoid(z1)
+  z2 <- cbind(1, h) %*% w2
+  list(output = sigmoid(z2), h = h)
+}
+# Where:
+
+sigmoid <- function(x) 1 / (1 + exp(-x))
+
+# Where do we get the weights from? On the first iteration, they can be random. Then we have to make them better. (We do this during Backpropagation)
+
+# Defining a Functions for Backpropagating with Proper weights:
+backpropagate <- function(x, y, y_hat, w1, w2, h, learn_rate) {
+  dw2 <- t(cbind(1, h)) %*% (y_hat - y)
+  dh  <- (y_hat - y) %*% t(w2[-1, , drop = FALSE])
+  dw1 <- t(cbind(1, x)) %*% (h * (1 - h) * dh)
+  
+  w1 <- w1 - learn_rate * dw1
+  w2 <- w2 - learn_rate * dw2
+  
+  list(w1 = w1, w2 = w2)
+}
+
+# Training the Network:
+train <- function(x, y, hidden = 5, learn_rate = 1e-2, iterations = 1e4) {
+  d <- ncol(x) + 1
+  w1 <- matrix(rnorm(d * hidden), d, hidden)
+  w2 <- as.matrix(rnorm(hidden + 1))
+  for (i in 1:iterations) {
+    ff <- feedforward(x, w1, w2)
+    bp <- backpropagate(x, y,
+                        y_hat = ff$output,
+                        w1, w2,
+                        h = ff$h,
+                        learn_rate = learn_rate)
+    w1 <- bp$w1; w2 <- bp$w2
+  }
+  list(output = ff$output, w1 = w1, w2 = w2)
+}
+# Let’s train a neural network with five hidden nodes (like in Figure 1) on the hot dogs data.
+x <- data.matrix(hotdogs[, c('x1', 'x2')])
+y <- hotdogs$class == 'hot dog'
+nnet5 <- train(x, y, hidden = 5, iterations = 1e5)
+
+
+# What are the results like? We can calculate how many objects it classified correctly:
+mean((nnet5$output > .5) == y)
+## [1] 0.76
+# That’s 76%, or 152 out of 200 objects in the right class.
+
+# Let’s draw a picture to see what the decision boundaries look like. To do that, we firstly make a grid of points around the input space:
+
+grid <- expand.grid(x1 = seq(min(hotdogs$x1) - 1,
+                             max(hotdogs$x1) + 1,
+                             by = .25),
+                    x2 = seq(min(hotdogs$x2) - 1,
+                             max(hotdogs$x2) + 1,
+                             by = .25))
+                             
+# Then feed these points forward through our trained neural network:
+ff_grid <- feedforward(x = data.matrix(grid[, c('x1', 'x2')]),
+                       w1 = nnet5$w1,
+                       w2 = nnet5$w2)
+grid$class <- factor((ff_grid$output > .5) * 1,
+                     labels = levels(hotdogs$class))
+                     
+# Plot of the Decision boundaries: 
+ggplot(hotdogs) + aes(x1, x2, colour = class) +
+  geom_point(data = grid, size = .5) +
+  geom_point() +
+  labs(x = expression(x[1]), y = expression(x[2]))
+  
+# How about 30 nodes? (100% Accuracy)
+nnet30 <- train(x, y, hidden = 30, iterations = 1e5)
+
+ff_grid <- feedforward(x = data.matrix(grid[, c('x1', 'x2')]),
+                       w1 = nnet30$w1,
+                       w2 = nnet30$w2)
+grid$class <- factor((ff_grid$output > .5) * 1,
+                     labels = levels(hotdogs$class))
+                     
+# Plot of the successful classification (Yay!): 
+ggplot(hotdogs) + aes(x1, x2, colour = class) +
+  geom_point(data = grid, size = .5) +
+  geom_point() +
+  labs(x = expression(x[1]), y = expression(x[2]))
+  
+# R6 Class Object Implementation:
+library(R6)
+NeuralNetwork <- R6Class("NeuralNetwork",
+  public = list(
+    X = NULL,  Y = NULL,
+    W1 = NULL, W2 = NULL,
+    output = NULL,
+    initialize = function(formula, hidden, data = list()) {
+      # Model and training data
+      mod <- model.frame(formula, data = data)
+      self$X <- model.matrix(attr(mod, 'terms'), data = mod)
+      self$Y <- model.response(mod)
+      
+      # Dimensions
+      D <- ncol(self$X) # input dimensions (+ bias)
+      K <- length(unique(self$Y)) # number of classes
+      H <- hidden # number of hidden nodes (- bias)
+      
+      # Initial weights and bias
+      self$W1 <- .01 * matrix(rnorm(D * H), D, H)
+      self$W2 <- .01 * matrix(rnorm((H + 1) * K), H + 1, K)
+    },
+    fit = function(data = self$X) {
+      h <- self$sigmoid(data %*% self$W1)
+      score <- cbind(1, h) %*% self$W2
+      return(self$softmax(score))
+    },
+    feedforward = function(data = self$X) {
+      self$output <- self$fit(data)
+      invisible(self)
+    },
+    backpropagate = function(lr = 1e-2) {
+      h <- self$sigmoid(self$X %*% self$W1)
+      Yid <- match(self$Y, sort(unique(self$Y)))
+      
+      haty_y <- self$output - (col(self$output) == Yid) # E[y] - y
+      dW2 <- t(cbind(1, h)) %*% haty_y
+      
+      dh <- haty_y %*% t(self$W2[-1, , drop = FALSE])
+      dW1 <- t(self$X) %*% (self$dsigmoid(h) * dh)
+      
+      self$W1 <- self$W1 - lr * dW1
+      self$W2 <- self$W2 - lr * dW2
+      
+      invisible(self)
+    },
+    predict = function(data = self$X) {
+      probs <- self$fit(data)
+      preds <- apply(probs, 1, which.max)
+      levels(self$Y)[preds]
+    },
+    compute_loss = function(probs = self$output) {
+      Yid <- match(self$Y, sort(unique(self$Y)))
+      correct_logprobs <- -log(probs[cbind(seq_along(Yid), Yid)])
+      sum(correct_logprobs)
+    },
+    train = function(iterations = 1e4,
+                     learn_rate = 1e-2,
+                     tolerance = .01,
+                     trace = 100) {
+      for (i in seq_len(iterations)) {
+        self$feedforward()$backpropagate(learn_rate)
+        if (trace > 0 && i %% trace == 0)
+          message('Iteration ', i, '\tLoss ', self$compute_loss(),
+                  '\tAccuracy ', self$accuracy())
+        if (self$compute_loss() < tolerance) break
+      }
+      invisible(self)
+    },
+    accuracy = function() {
+      predictions <- apply(self$output, 1, which.max)
+      predictions <- levels(self$Y)[predictions]
+      mean(predictions == self$Y)
+    },
+    sigmoid = function(x) 1 / (1 + exp(-x)),
+    dsigmoid = function(x) x * (1 - x),
+    softmax = function(x) exp(x) / rowSums(exp(x))
+  )
+)
+
+irisnet <- NeuralNetwork$new(Species ~ ., data = iris, hidden = 5)
+irisnet$train(9999, trace = 1e3, learn_rate = .0001)
+irisnet
+irisnet$train(1000)$predict(newdata)
+
+
+
+
+
+library(R6)
+NeuralNetwork <- R6Class("NeuralNetwork",
+  public = list(
+    X = NULL,  Y = NULL,
+    W1 = NULL, W2 = NULL,
+    output = NULL,
+    initialize = function(formula, hidden, data = list()) {
+    
+      # (Model and Training Data)
+      mod <- model.frame(formula, data = data)
+      self$X <- model.matrix(attr(mod, 'terms'), data = mod)
+      self$Y <- model.response(mod)
+      
+      # (Dimensions)
+      D <- ncol(self$X) # input dimensions (+bias)
+      K <- length(unique(self$Y)) # number of classes
+      H <- hidden # number of hidden nodes (- bias)
+      
+      # (Initial weights and bias)
+      self$W1 <- .01 * matrix(rnorm(D * H), D, H)
+      self$W2 <- .01 * matrix(rnorm((H + 1) * K), H + 1, K)
+    },
+    fit = function(data = self$W1) {
+      h <- self$sigmaoid(data %*% self$W1)
+      score <- cbind(1, h) %*% self$W2
+      return(self$softmax(score))
+    }, 
+    feedforward = function(data = self$X) {
+      self$output <- self$fit(data)
+      invisible(self)
+    },
+    backpropagate = function(lr = 1e-2) {
+      h <- self$sigmoid(self$X %*% self$W1)
+      Yid <- match(self$Y, sort(unique(self$Y)))
+      
+      haty_y <- self$output - (col(self$output) == Yid) # E[y] - y
+      dW2 <- t(cbind(1, h)) %*% haty_y
+      
+      dh <- haty_y <- %*% t(self#W2[1, , drop = FALSE])
+      dW1 <- t(self$X) %*% (self$dsigmoid(h) * dh)
+      
+      self$W1 <- self$W1 - lr * dW1
+      self$W2 <- self$W2 - lr * dW2
+      
+      invisisble(self)
+    },
+    predict = function(data = self$X) {
+      probs <- self$fit(data)
+      preds <- apply(probs, 1, which.max)
+      levels(self$Y) [preds[]
+    }, 
+    compute_loss = function(probs = self$output) {
+    Yid <- match( self$Y, sort(unique(self$Y)))
+    correct_logprobs <- -lag(prob[cbind(seq_along(Yid), Yid)])
+    sum(correct_logprobs)
+    },
+    train = function(iterations = 1e4, 
+                     learn_rate = 1e-2, 
+                     tolerance = .01,
+                     trace =100) {
+      for(i in seq_len(iterations)) {
+        self$feedforward()$backpropagate(learn_rate)
+        if (trace > 0 && i %% trace ==0)
+          message('Iteration ', i, '\tloss ', self$compute_loss(),
+                  '\tAccuracy ', self$accuracy())
+        if (self$compute_loss() < tolerance) break
+      }
+      invisible(self)
+    },
+    accuracy = function() {
+      predictions <- apply(self$output, 1, which.max)
+      predictions <- levels(self$Y)[predictions]
+      mean(predictions == self$Y)
+    },
+    sigmoid = function(x) 1 / (1 + exp(-x)),
+    dsigmoid = function(x) x * (1 - x),
+    softmax = funcation(x) exp(x) / rowSums(exp(x))
+  )
+)
+    
+

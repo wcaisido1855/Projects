@@ -1,0 +1,122 @@
+---
+title: "Mandala"
+output: html_document
+---
+# Load in libraries
+library(ggplot2)
+library(dplyr)
+library(deldir)
+library(colourlovers)
+library(rlist)
+
+################################################################################
+Black and White Mandalas - This one works
+################################################################################
+
+# Parameters to change as you like
+iter=4# Number of iterations (depth)
+points=10 # Number of points
+radius=4 # Factor of expansion/compression
+
+# Angles of points from center
+angles=seq(0, 2*pi*(1-1/points), length.out = points)+pi/2
+  
+# Initial center
+df=data.frame(x=0, y=0)
+
+# Iterate over centers again and again
+for (k in 1:iter)
+  {
+    temp=data.frame()
+    for (i in 1:nrow(df))
+    {
+      data.frame(x=df[i,"x"]+radius^(k-1)*cos(angles), 
+                 y=df[i,"y"]+radius^(k-1)*sin(angles)) %>% rbind(temp) -> temp
+    }
+    df=temp
+  }
+
+# Obtain Voronoi regions
+df %>%
+  select(x,y) %>% 
+  deldir(sort=TRUE) %>% 
+  .$dirsgs -> data
+
+# Plot regions with geom_segmen
+data %>% 
+  ggplot() +
+  geom_segment(aes(x = x1, y = y1, xend = x2, yend = y2), color="black") +
+  scale_x_continuous(expand=c(0,0))+
+  scale_y_continuous(expand=c(0,0))+
+  coord_fixed() +
+  theme(legend.position  = "none",
+        panel.background = element_rect(fill="white"),
+        panel.border     = element_rect(colour = "black", fill=NA),
+        axis.ticks       = element_blank(),
+        panel.grid       = element_blank(),
+        axis.title       = element_blank(),
+        axis.text        = element_blank())->plot
+
+plot  
+
+
+
+################################################################################
+COLORED MANDALAS - HAS PROBLEMS
+################################################################################
+args <- commandArgs(trailingOnly = TRUE)
+iter = as.numeric(args[1])
+radius = as.numeric(args[2])
+points = as.numeric(args[3])
+outfile = args[4]
+
+iter=3# Number of iterations (depth)
+points=8 # Number of points
+radius=4 # Factor of expansion/compression
+
+iter = as.numeric(args[3])
+radius = as.numeric(args[5])
+points = as.numeric(args[6])
+outfile = args[5]
+
+# Angles of points from center
+angles=seq(0, 2*pi*(1-1/points), length.out = points)+pi/2
+
+# Initial center
+df=data.frame(x=0, y=0)
+
+# Iterate over centers again and again
+for (k in 1:iter)
+{
+  temp=data.frame()
+  for (i in 1:nrow(df))
+  {
+    data.frame(x=df[i,"x"]+radius^(k-1)*cos(angles), 
+               y=df[i,"y"]+radius^(k-1)*sin(angles)) %>% rbind(temp) -> temp
+  }
+  df=temp
+}
+
+# Function to extract id, coordinates and area of each polygon
+crea = function(tile) {tile %>% list.match("ptNum|x|y|area") %>% as.data.frame()}
+
+# Generate tesselation, obtain polygons and create a dataframe with results
+# This dataframe will be the input of ggplot
+df %>% 
+  deldir(sort = TRUE)  %>% 
+  tile.list() %>% 
+  list.filter(sum(bp)==0) %>% 
+  list.filter(length(intersect(which(x==0), which(y==0)))==0) %>% 
+  lapply(crea) %>% 
+  list.rbind() ->  df_polygon
+
+# Pick a random top palette from colourLovers
+palette <- sample(clpalettes('top'), 1)[[1]] %>% swatch %>% .[[1]]
+
+# Draw mandala with geom_polygon. Colur depends on area
+ggplot(df_polygon, aes(x = x, y = y)) +
+  geom_polygon(aes(fill = area, color=area, group = ptNum), 
+               show.legend = FALSE, size=0)+
+  scale_fill_gradientn(colors=sample(palette, length(palette))) + 
+  scale_color_gradientn(colors="gray30") +   
+  theme_void()
