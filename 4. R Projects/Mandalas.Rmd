@@ -1,3 +1,8 @@
+This is a Fun little function I found and tweaked that Makes Mandalas in R ^_^
+
+The Original Creator's Work and code can be found here: 
+https://github.com/aschinchon/mandalas
+
 ---
 title: "Mandala"
 output: html_document
