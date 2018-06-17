@@ -1,3 +1,5 @@
+this is My code for creating a Neural Net in R (To classify "Hot dog or Not Hot Dog"- basically a binary classifier) ^_^
+
 # Makes the function first:
 two_spirals <- function(N = 200,
                         radians =3*pi,
